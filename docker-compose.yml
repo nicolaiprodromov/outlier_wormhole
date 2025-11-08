@@ -1,0 +1,100 @@
+services:
+  wormhole-server:
+    build:
+      context: .
+      dockerfile: services/server/Dockerfile
+    container_name: wormhole-server
+    ports:
+      - "8765:8765"
+    environment:
+      - wormhole_port=8765
+      - wormhole_host=0.0.0.0
+    networks:
+      - wormhole-net
+    healthcheck:
+      test: ["CMD", "python", "-c", "import socket; s = socket.socket(); s.connect(('localhost', 8765)); s.close()"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  wormhole-bridge:
+    build:
+      context: .
+      dockerfile: services/bridge/Dockerfile
+    container_name: wormhole-bridge
+    ports:
+      - "9222:9222"
+      - "8766:8766"  # WebSocket proxy port
+    environment:
+      - chrome_debug_port=9222
+      - chrome_user_data_dir=/tmp/chrome-debug
+      - wormhole_server_host=wormhole-server
+      - wormhole_port=8765
+      - proxy_port=8766
+      - outlier_email=${OUTLIER_EMAIL}
+      - outlier_password=${OUTLIER_PASSWORD}
+    depends_on:
+      wormhole-server:
+        condition: service_healthy
+    volumes:
+      - ./services/bridge/inject_wormhole.js:/app/inject_wormhole.js:ro
+      - chrome-data:/tmp/chrome-debug
+    networks:
+      - wormhole-net
+    restart: unless-stopped
+    # Increase shared memory size for Chrome
+    shm_size: 2gb
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  wormhole-oai:
+    build:
+      context: .
+      dockerfile: services/oai/Dockerfile
+    container_name: wormhole-oai
+    ports:
+      - "11434:11434"
+    environment:
+      - oai_host=0.0.0.0
+      - oai_port=11434
+      - wormhole_server_host=wormhole-server
+      - wormhole_port=8765
+    depends_on:
+      wormhole-server:
+        condition: service_healthy
+      wormhole-bridge:
+        condition: service_started
+    volumes:
+      - ./templates:/app/templates:ro
+      - ./data:/app/data
+      - ./agent_prompts.yaml:/app/agent_prompts.yaml:ro
+    networks:
+      - wormhole-net
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:11434/api/version').read()"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+networks:
+  wormhole-net:
+    driver: bridge
+
+volumes:
+  chrome-data:
+    driver: local

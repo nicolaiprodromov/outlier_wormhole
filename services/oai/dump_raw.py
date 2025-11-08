@@ -1,7 +1,7 @@
 from pathlib import Path
 from datetime import datetime
 RAW_DUMPS_FOLDER = Path("data/raw_dumps")
-RAW_DUMPS_FOLDER.mkdir(exist_ok=True)
+RAW_DUMPS_FOLDER.mkdir(parents=True, exist_ok=True)
 def dump_raw_prompts(system_message: str, user_prompt: str):
     timestamp = int(datetime.now().timestamp())
     system_file = RAW_DUMPS_FOLDER / f"system_{timestamp}.md"

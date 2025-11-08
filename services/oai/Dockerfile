@@ -7,22 +7,26 @@ FROM python:3.11-slim
 WORKDIR /app
 
 # Install dependencies
-COPY requirements.txt .
+COPY services/oai/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy application code
-COPY wormhole-oai.py .
-COPY send.py .
-COPY agent_workflow.py .
-COPY template_composer.py .
-COPY prompt_utils.py .
-COPY dump_raw.py .
+COPY services/oai/wormhole-oai.py .
+COPY services/oai/send.py .
+COPY services/oai/agent_workflow.py .
+COPY services/oai/template_composer.py .
+COPY services/oai/prompt_utils.py .
+COPY services/oai/dump_raw.py .
+COPY services/oai/create_conversation.js .
+COPY services/oai/send_message.js .
 
 # Create directories for data and templates
 RUN mkdir -p /app/data /app/templates
 
-# Create non-root user
+# Create non-root user and set ownership
 RUN useradd -m -u 1000 wormhole && chown -R wormhole:wormhole /app
+
+# Switch to non-root user
 USER wormhole
 
 # Expose API port

@@ -21,19 +21,20 @@ async def handler(websocket):
                 try:
                     parsed = json.loads(message)
                     if parsed.get("type") == "sender":
-                        is_sender  = True
-                        code       = parsed.get("code")
-                        request_id = parsed.get("request_id")
+                        is_sender   = True
+                        command     = parsed.get("command")
+                        params      = parsed.get("params")
+                        request_id  = parsed.get("request_id")
                         
                         if not connected_clients:
                             await websocket.send(json.dumps({"success": False, "error": "No clients connected"}))
                             return
                         else:
-                            message_to_send = json.dumps({"code": code, "request_id": request_id})
+                            message_to_send = json.dumps({"command": command, "params": params, "request_id": request_id})
                             for client in list(connected_clients):
                                 try:
                                     await client.send(message_to_send)
-                                    print(f"│   └─ Sent code to page client")
+                                    print(f"│   └─ Sent command '{command}' to page client")
                                 except:
                                     connected_clients.discard(client)
                             
@@ -67,8 +68,12 @@ async def handler(websocket):
 
 async def main():
     port = int(os.getenv("wormhole_port", 8765))
-    print(f"┌─ ws://localhost:{port}")
-    async with websockets.serve(handler, "localhost", port):
+    host = os.getenv("wormhole_host", "0.0.0.0")
+    
+    # Use plain WebSocket (no SSL) for internal Docker network communication
+    # This avoids certificate validation issues between containers
+    print(f"┌─ ws://{host}:{port}")
+    async with websockets.serve(handler, host, port):
         await asyncio.Future()
 
 if __name__ == "__main__":

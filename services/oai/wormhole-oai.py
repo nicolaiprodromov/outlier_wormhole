@@ -1,5 +1,6 @@
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, Header, HTTPException
 from fastapi.responses import StreamingResponse
+from typing import Optional
 import json
 import time
 import asyncio
@@ -14,6 +15,21 @@ from dump_raw import dump_raw_prompts
 from agent_workflow import AgentWorkflow
 
 app = FastAPI()
+
+# Middleware to accept any Authorization header (VS Code compatibility)
+@app.middleware("http")
+async def accept_authorization_header(request: Request, call_next):
+    """
+    VS Code sends Authorization headers with Bearer tokens.
+    Since this is a local service, we accept any authorization without validation.
+    """
+    # Log all incoming requests with headers
+    auth_header = request.headers.get("authorization", "None")
+    print(f"[Request] {request.method} {request.url.path} | Auth: {auth_header[:50] if auth_header != 'None' else 'None'}...")
+    
+    response = await call_next(request)
+    print(f"[Response] Status: {response.status_code}")
+    return response
 
 active_conversation_id = None
 composer = TemplateComposer()
@@ -340,8 +356,8 @@ if __name__ == "__main__":
     import ssl
     import os
     
-    host = "127.0.0.1"
-    port = 11434
+    host = os.getenv("oai_host", "0.0.0.0")
+    port = int(os.getenv("oai_port", "11434"))
     
     print("URL: {}://{}:{}".format("http", host, port))
     print("Available endpoints:")
