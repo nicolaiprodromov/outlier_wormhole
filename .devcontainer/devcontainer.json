@@ -1,7 +1,6 @@
 {
   "name": "Docker in Docker",
   "image": "mcr.microsoft.com/devcontainers/base:bullseye",
-
   "features": {
     "ghcr.io/devcontainers/features/docker-in-docker:2": {
       "version": "latest",
@@ -18,7 +17,8 @@
         "chouzz.vscode-better-align",
         "bierner.github-markdown-preview",
         "skellock.just",
-        "ms-vscode.vscode-websearchforcopilot"
+        "ms-vscode.vscode-websearchforcopilot",
+        "xyc.vscode-mdx-preview"
       ]
     }
   }

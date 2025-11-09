@@ -219,6 +219,7 @@ async def chat_completions(request: Request):
     print(f"Stream: {body.get('stream')}")
     print(f"Tools: {len(body.get('tools', []))} tools")
     model = body.get("model")
+
     if not model:
         return {
             "error": {
@@ -227,22 +228,28 @@ async def chat_completions(request: Request):
                 "code": "model_required",
             }
         }, 400
+
     messages = body.get("messages", [])
     stream = body.get("stream", False)
     tools = body.get("tools", [])
     tool_choice = body.get("tool_choice", "auto")
+
     print(f"Message roles in request: {[msg.get('role') for msg in messages]}")
+
     raw_system = ""
     raw_user = ""
     user_request = ""
     attachments = ""
     has_tool_results = False
     last_assistant_had_final_answer = False
+
     for i, msg in enumerate(messages):
         role = msg.get("role")
         content = msg.get("content", "")
+
         if role == "system":
             raw_system = content
+
         elif role == "user":
             if isinstance(content, str):
                 raw_user = content
@@ -268,6 +275,7 @@ async def chat_completions(request: Request):
             else:
                 user_request = raw_user
             has_tool_results = False
+
         elif role == "assistant":
             assistant_content = msg.get("content", "")
             if assistant_content and agent_workflow.has_final_answer_marker(
@@ -276,8 +284,10 @@ async def chat_completions(request: Request):
                 last_assistant_had_final_answer = True
             else:
                 last_assistant_had_final_answer = False
+
         elif role == "tool":
             has_tool_results = True
+
     if raw_system or raw_user:
         dump_raw_prompts(raw_system, raw_user)
         print(
@@ -285,8 +295,10 @@ async def chat_completions(request: Request):
         )
     else:
         print(f"No system/user messages to dump")
+
     has_assistant_messages = any(msg.get("role") == "assistant" for msg in messages)
     is_new_conversation = not has_assistant_messages
+
     if is_new_conversation:
         global active_conversation_id
         active_conversation_id = None
@@ -297,6 +309,7 @@ async def chat_completions(request: Request):
         print(
             f"Continuing conversation (has assistant messages, total messages: {len(messages)})"
         )
+
     if tools and (not has_tool_results or last_assistant_had_final_answer):
         clean_text, tool_calls, conversation_id = (
             await agent_workflow.handle_initial_tool_request(
@@ -335,8 +348,10 @@ async def chat_completions(request: Request):
                         "type": "server_error",
                     }
                 }, 500
+
     completion_id = f"chatcmpl-{uuid.uuid4().hex[:29]}"
     created_time = int(time.time())
+
     if stream:
 
         async def generate():

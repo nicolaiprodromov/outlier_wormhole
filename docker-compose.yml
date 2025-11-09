@@ -112,10 +112,50 @@ services:
         max-size: "10m"
         max-file: "3"
 
+  janitor:
+    profiles:
+      - janitor
+    build:
+      context: services/janitor
+      dockerfile: Dockerfile
+    image: nicolaiprodromov/ow-janitor:latest
+    container_name: janitor
+    environment:
+      - DATA_DIR=/app/data
+      - ARCHIVE_DIR=/app/archives
+      - CLEANUP_INTERVAL_HOURS=${CLEANUP_INTERVAL_HOURS:-24}
+      - MAX_DATA_SIZE_MB=${MAX_DATA_SIZE_MB:-1024}
+      - MAX_FILE_AGE_DAYS=${MAX_FILE_AGE_DAYS:-30}
+      - ARCHIVE_RETENTION_DAYS=${ARCHIVE_RETENTION_DAYS:-90}
+      - RUN_ON_STARTUP=${JANITOR_RUN_ON_STARTUP:-true}
+      - TZ=${TZ:-UTC}
+    volumes:
+      - ./data:/app/data
+      - janitor-archives:/app/archives
+      - janitor-logs:/var/log/janitor
+    networks:
+      - ow-net
+    healthcheck:
+      test: ["CMD", "test", "-f", "/var/log/janitor/heartbeat"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
 networks:
   ow-net:
     driver: bridge
 
 volumes:
   chrome-data:
+    driver: local
+  janitor-archives:
+    driver: local
+  janitor-logs:
     driver: local

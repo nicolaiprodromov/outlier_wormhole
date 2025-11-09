@@ -1,4 +1,4 @@
-![Outlier Logo](https://app.outlier.ai/assets/logo.svg)
+# [app.outlier.ai](https://app.outlier.ai) wormhole
 
 get _0$ 24/7_ sota models API via an **OpenAI/Ollama-compatible server**.
 
@@ -11,10 +11,10 @@ get _0$ 24/7_ sota models API via an **OpenAI/Ollama-compatible server**.
 ![Outlier Logo](https://app.outlier.ai/assets/llm-icons/Llama%204%20Maverick.svg)
 ![Outlier Logo](https://app.outlier.ai/assets/llm-icons/qwen3-235b-a22b-2507-v1.svg)
 
-```text
+```json
 ┌─────────────────────────────────────────────────────────────┐
-│                       Client (VS Code)                      │
-│                  `http://localhost:11434`                   │
+│                            Client                           │
+│                      `localhost:11434`                      │
 └────────────────────────────── ▲ ────────────────────────────┘
                                 │
 ┌────────────────────────────── ▼ ────────────────────────────┐
@@ -47,11 +47,18 @@ get _0$ 24/7_ sota models API via an **OpenAI/Ollama-compatible server**.
 
 > [!IMPORTANT]
 >
-> you need go through the annoying process of making an outlier/scaleai account to use the _outlier playground_
+> you need go through the annoying process of making an outlier/scaleai account to use the _outlier playground_.
 
 **Prerequisites:**
 
 - Docker (running)
+- [just](https://github.com/casey/just) (optional)
+
+---
+
+1. Clone this repository, fill in the `.env` and run `just start` (or run `docker compose up --build -d`)
+
+### OR
 
 1. **Create a new directory and add these two files:**
 
@@ -168,7 +175,7 @@ get _0$ 24/7_ sota models API via an **OpenAI/Ollama-compatible server**.
 
 3. **Point any OpenAI-compatible client to `http://localhost:11434`**
 
-## Use with IDE
+## Use with your IDE
 
 ### VS Code
 
@@ -202,15 +209,6 @@ get _0$ 24/7_ sota models API via an **OpenAI/Ollama-compatible server**.
   5. Add your OpenAI API key (can be any non-empty string, e.g., `outlier`)
   6. The model picker will automatically show available models from your endpoint
 
-### Windsurf
-
-- **Windsurf does not currently support custom OpenAI-compatible API endpoints.**
-  1. Install the **OpenAI Chat** extension from the Windsurf marketplace
-  2. Configure the extension with:
-     - API Base URL: `http://localhost:11434/v1`
-     - API Key: Any non-empty string (e.g., `outlier`)
-     - Custom model name: Any Outlier model ID
-
 ## Commands
 
 ```bash
@@ -239,3 +237,13 @@ docker compose logs -f [service]  # View logs
 
 - FastAPI server providing OpenAI-compatible endpoints. Transforms requests into Outlier commands, manages conversation state, and logs all interactions.
   - **Port:** 11434
+
+### Janitor (`services/janitor/`) - optional
+
+- A clean-up service to keep the logs size in check, fully configurable.
+
+<div align="right">
+
+![Outlier Logo](https://app.outlier.ai/assets/logo.svg)
+
+</div>

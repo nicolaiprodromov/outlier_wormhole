@@ -122,5 +122,6 @@
   "editor.stickyScroll.enabled": false,
   "editor.renderWhitespace": "none",
   "workbench.statusBar.visible": false,
-  "chat.mcp.gallery.enabled": true
+  "chat.mcp.gallery.enabled": true,
+  "cSpell.words": ["smolagents"]
 }
