@@ -1,5 +1,4 @@
 
-
 FROM mcr.microsoft.com/playwright/python:v1.40.0-jammy
 
 ENV PYTHONUNBUFFERED=1
@@ -25,9 +24,9 @@ RUN id -u pwuser >/dev/null 2>&1 && usermod -l wormhole pwuser || useradd -m -u 
 RUN chown -R $(id -u wormhole):$(id -g wormhole) /app
 USER wormhole
 
-EXPOSE 9222 8766
+EXPOSE ${chrome_debug_port:-9222} ${proxy_port:-8766}
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
-    CMD curl -f http://localhost:9222/json/version || exit 1
+    CMD curl -f http://localhost:${chrome_debug_port:-9222}/json/version || exit 1
 
 CMD ["./entrypoint.sh"]

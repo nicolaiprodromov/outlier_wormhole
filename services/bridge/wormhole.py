@@ -11,6 +11,7 @@ load_dotenv()
 async def inject_wormhole():
     debug_port = os.getenv("chrome_debug_port", "9222")
     user_data_dir = os.getenv("chrome_user_data_dir", "/tmp/chrome-debug")
+    proxy_port = os.getenv("proxy_port", "8766")
 
     chromium_path = "/ms-playwright/chromium-1091/chrome-linux/chrome"
 
@@ -27,8 +28,16 @@ async def inject_wormhole():
             f"--remote-debugging-port={debug_port}",
             "--remote-debugging-address=0.0.0.0",
             f"--user-data-dir={user_data_dir}",
+            "--disable-gpu",
+            "--disable-software-rasterizer",
+            "--log-level=3",
+            "--silent",
+            "--disable-logging",
+            "--disable-breakpad",
             "https://app.outlier.ai/en/expert/login?redirect_url=%2Fexpert&clear=1",
-        ]
+        ],
+        stderr=subprocess.DEVNULL,
+        stdout=subprocess.DEVNULL,
     )
 
     print("[Wormhole] Launching Chrome...")
@@ -38,6 +47,12 @@ async def inject_wormhole():
         browser = await p.chromium.connect_over_cdp(f"http://127.0.0.1:{debug_port}")
         context = browser.contexts[0]
         page = context.pages[0]
+
+        def handle_console(msg):
+            if msg.type in ["error", "warning"]:
+                print(f"[Console {msg.type.upper()}] {msg.text}")
+
+        page.on("console", handle_console)
 
         try:
             await page.wait_for_load_state("domcontentloaded", timeout=10000)
@@ -145,9 +160,15 @@ async def inject_wormhole():
 
         print("[Wormhole] Loading injection script...")
         with open("inject_wormhole.js", "r") as f:
-            script = f.read()
+            script_template = f.read()
+
+        script = script_template.replace(
+            "const PORT = 8766;", f"const PORT = {proxy_port};"
+        )
 
         async def handle_page(page):
+            page.on("console", handle_console)
+
             await page.wait_for_load_state("domcontentloaded")
             if "outlier.ai" not in page.url:
                 print(f"[Wormhole] Skipping non-Outlier page: {page.url}")

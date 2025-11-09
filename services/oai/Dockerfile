@@ -21,9 +21,9 @@ RUN useradd -m -u 1000 wormhole && chown -R wormhole:wormhole /app
 
 USER wormhole
 
-EXPOSE 11434
+EXPOSE ${oai_port:-11434}
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:11434/api/version')" || exit 1
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:${oai_port:-11434}/api/version')" || exit 1
 
 CMD ["python", "wormhole-oai.py"]

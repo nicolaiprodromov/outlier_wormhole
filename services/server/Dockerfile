@@ -15,9 +15,9 @@ COPY services/server/wormhole_server.py .
 RUN useradd -m -u 1000 wormhole && chown -R wormhole:wormhole /app
 USER wormhole
 
-EXPOSE 8765
+EXPOSE ${wormhole_port:-8765}
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD python -c "import socket; s=socket.socket(); s.connect(('localhost', 8765)); s.close()" || exit 1
+    CMD python -c "import socket; s=socket.socket(); s.connect(('localhost', ${wormhole_port:-8765})); s.close()" || exit 1
 
 CMD ["python", "-u", "wormhole_server.py"]

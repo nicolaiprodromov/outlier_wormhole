@@ -4,12 +4,14 @@ services:
     build:
       context: .
       dockerfile: services/server/Dockerfile
+      args:
+        - wormhole_port=${WORMHOLE_PORT:-8765}
     image: nicolaiprodromov/ow-server:latest
     container_name: server
     ports:
-      - "8765:8765"
+      - "${WORMHOLE_PORT:-8765}:${WORMHOLE_PORT:-8765}"
     environment:
-      - wormhole_port=8765
+      - wormhole_port=${WORMHOLE_PORT:-8765}
       - wormhole_host=0.0.0.0
     networks:
       - ow-net
@@ -35,17 +37,20 @@ services:
     build:
       context: .
       dockerfile: services/bridge/Dockerfile
+      args:
+        - chrome_debug_port=${CHROME_DEBUG_PORT:-9222}
+        - proxy_port=${PROXY_PORT:-8766}
     image: nicolaiprodromov/ow-bridge:latest
     container_name: bridge
     ports:
-      - "9222:9222"
-      - "8766:8766"
+      - "${CHROME_DEBUG_PORT:-9222}:${CHROME_DEBUG_PORT:-9222}"
+      - "${PROXY_PORT:-8766}:${PROXY_PORT:-8766}"
     environment:
-      - chrome_debug_port=9222
+      - chrome_debug_port=${CHROME_DEBUG_PORT:-9222}
       - chrome_user_data_dir=/tmp/chrome-debug
       - wormhole_server_host=server
-      - wormhole_port=8765
-      - proxy_port=8766
+      - wormhole_port=${WORMHOLE_PORT:-8765}
+      - proxy_port=${PROXY_PORT:-8766}
       - outlier_email=${OUTLIER_EMAIL}
       - outlier_password=${OUTLIER_PASSWORD}
     depends_on:
@@ -68,15 +73,17 @@ services:
     build:
       context: .
       dockerfile: services/oai/Dockerfile
+      args:
+        - oai_port=${OAI_PORT:-11434}
     image: nicolaiprodromov/ow-oai:latest
     container_name: oai
     ports:
-      - "11434:11434"
+      - "${OAI_PORT:-11434}:${OAI_PORT:-11434}"
     environment:
       - oai_host=0.0.0.0
-      - oai_port=11434
+      - oai_port=${OAI_PORT:-11434}
       - wormhole_server_host=server
-      - wormhole_port=8765
+      - wormhole_port=${WORMHOLE_PORT:-8765}
     depends_on:
       server:
         condition: service_healthy

@@ -4,7 +4,7 @@ on:
   push:
     branches: [main, master]
     paths:
-      - "README-*.md"
+      - "README.md"
       - ".github/workflows/docker-hub-readme.yml"
 
 jobs:
@@ -19,7 +19,7 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
           repository: nicolaiprodromov/ow-server
-          readme-filepath: ./README-server.md
+          readme-filepath: ./README.md
 
       - name: Update ow-bridge README
         uses: peter-evans/dockerhub-description@v3
@@ -27,7 +27,7 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
           repository: nicolaiprodromov/ow-bridge
-          readme-filepath: ./README-bridge.md
+          readme-filepath: ./README.md
 
       - name: Update ow-oai README
         uses: peter-evans/dockerhub-description@v3
@@ -35,4 +35,4 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
           repository: nicolaiprodromov/ow-oai
-          readme-filepath: ./README-oai.md
+          readme-filepath: ./README.md

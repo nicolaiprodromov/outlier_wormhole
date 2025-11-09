@@ -1,15 +1,11 @@
-from fastapi import FastAPI, Request, Header, HTTPException
+from fastapi import FastAPI, Request
 from fastapi.responses import StreamingResponse
-from typing import Optional
 import json
 import time
-import asyncio
 import uuid
 import os
 import re
 from pathlib import Path
-from datetime import datetime
-from send import send_script_async
 from template_composer import TemplateComposer
 from dump_raw import dump_raw_prompts
 from agent_workflow import AgentWorkflow
@@ -23,7 +19,6 @@ async def accept_authorization_header(request: Request, call_next):
     print(
         f"[Request] {request.method} {request.url.path} | Auth: {auth_header[:50] if auth_header != 'None' else 'None'}..."
     )
-
     response = await call_next(request)
     print(f"[Response] Status: {response.status_code}")
     return response
@@ -31,12 +26,9 @@ async def accept_authorization_header(request: Request, call_next):
 
 active_conversation_id = None
 composer = TemplateComposer()
-
 DATA_FOLDER = Path("data")
 DATA_FOLDER.mkdir(exist_ok=True)
-
 conversation_logs = {}
-
 agent_workflow = AgentWorkflow(
     lambda: active_conversation_id,
     lambda cid: set_active_conversation(cid),
@@ -51,21 +43,16 @@ def set_active_conversation(conversation_id):
 
 def log_to_data_folder(conversation_id, prompt, system_message, response):
     timestamp = int(time.time())
-
     if conversation_id not in conversation_logs:
         conversation_logs[conversation_id] = []
-
     log_entry = {
         "timestamp": timestamp,
         "index": len(conversation_logs[conversation_id]),
     }
     conversation_logs[conversation_id].append(log_entry)
-
     conv_folder = DATA_FOLDER / conversation_id
     conv_folder.mkdir(exist_ok=True)
-
     index = log_entry["index"]
-
     (conv_folder / f"{index}_system.md").write_text(system_message, encoding="utf-8")
     (conv_folder / f"{index}_prompt.md").write_text(prompt, encoding="utf-8")
     (conv_folder / f"{index}_response.md").write_text(response, encoding="utf-8")
@@ -80,9 +67,7 @@ async def api_version():
 async def ollama_show(request: Request):
     body = await request.json()
     model_name = body.get("name", "")
-
-    print(f"Received Ollama /api/show request for model: {model_name}")
-
+    print(f"Received /api/show request for model: {model_name}")
     return {
         "modelfile": f"# Modelfile for {model_name}",
         "parameters": "",
@@ -105,7 +90,6 @@ async def ollama_chat(request: Request):
 @app.get("/v1/models")
 async def list_models():
     print(f"Received /v1/models request")
-
     return {
         "object": "list",
         "data": [
@@ -230,12 +214,10 @@ async def list_models():
 @app.post("/v1/chat/completions")
 async def chat_completions(request: Request):
     body = await request.json()
-
     print(f"Received /v1/chat/completions request")
     print(f"Model: {body.get('model')}")
     print(f"Stream: {body.get('stream')}")
     print(f"Tools: {len(body.get('tools', []))} tools")
-
     model = body.get("model")
     if not model:
         return {
@@ -245,25 +227,20 @@ async def chat_completions(request: Request):
                 "code": "model_required",
             }
         }, 400
-
     messages = body.get("messages", [])
     stream = body.get("stream", False)
     tools = body.get("tools", [])
     tool_choice = body.get("tool_choice", "auto")
-
-    print(f"[Debug] Message roles in request: {[msg.get('role') for msg in messages]}")
-
+    print(f"Message roles in request: {[msg.get('role') for msg in messages]}")
     raw_system = ""
     raw_user = ""
     user_request = ""
     attachments = ""
     has_tool_results = False
     last_assistant_had_final_answer = False
-
     for i, msg in enumerate(messages):
         role = msg.get("role")
         content = msg.get("content", "")
-
         if role == "system":
             raw_system = content
         elif role == "user":
@@ -278,13 +255,11 @@ async def chat_completions(request: Request):
                 raw_user = " ".join(text_parts) if text_parts else str(content)
             else:
                 raw_user = str(content)
-
             attachments_match = re.search(
                 r"<attachments>(.*?)</attachments>", raw_user, re.DOTALL
             )
             if attachments_match:
                 attachments = attachments_match.group(0)
-
             user_request_match = re.search(
                 r"<userRequest>(.*?)</userRequest>", raw_user, re.DOTALL
             )
@@ -292,7 +267,6 @@ async def chat_completions(request: Request):
                 user_request = user_request_match.group(1).strip()
             else:
                 user_request = raw_user
-
             has_tool_results = False
         elif role == "assistant":
             assistant_content = msg.get("content", "")
@@ -304,29 +278,25 @@ async def chat_completions(request: Request):
                 last_assistant_had_final_answer = False
         elif role == "tool":
             has_tool_results = True
-
     if raw_system or raw_user:
         dump_raw_prompts(raw_system, raw_user)
         print(
-            f"[Dump] Saved raw prompts - system: {len(raw_system)} chars, user: {len(raw_user)} chars"
+            f"aved raw prompts - system: {len(raw_system)} chars, user: {len(raw_user)} chars"
         )
     else:
-        print(f"[Dump] No system/user messages to dump")
-
+        print(f"No system/user messages to dump")
     has_assistant_messages = any(msg.get("role") == "assistant" for msg in messages)
     is_new_conversation = not has_assistant_messages
-
     if is_new_conversation:
         global active_conversation_id
         active_conversation_id = None
         print(
-            f"[VSCode] New conversation detected (no assistant messages, total messages: {len(messages)})"
+            f"New conversation detected (no assistant messages, total messages: {len(messages)})"
         )
     else:
         print(
-            f"[VSCode] Continuing conversation (has assistant messages, total messages: {len(messages)})"
+            f"Continuing conversation (has assistant messages, total messages: {len(messages)})"
         )
-
     if tools and (not has_tool_results or last_assistant_had_final_answer):
         clean_text, tool_calls, conversation_id = (
             await agent_workflow.handle_initial_tool_request(
@@ -365,15 +335,12 @@ async def chat_completions(request: Request):
                         "type": "server_error",
                     }
                 }, 500
-
     completion_id = f"chatcmpl-{uuid.uuid4().hex[:29]}"
     created_time = int(time.time())
-
     if stream:
 
         async def generate():
             chunk_id = completion_id
-
             first_chunk = {
                 "id": chunk_id,
                 "object": "chat.completion.chunk",
@@ -390,7 +357,6 @@ async def chat_completions(request: Request):
                 ],
             }
             yield f"data: {json.dumps(first_chunk)}\n\n"
-
             if tool_calls:
                 for tool_call in tool_calls:
                     tool_chunk = {
@@ -429,7 +395,6 @@ async def chat_completions(request: Request):
                             ],
                         }
                         yield f"data: {json.dumps(newline_chunk)}\n\n"
-
                     if line.strip():
                         words = line.split()
                         for i, word in enumerate(words):
@@ -452,7 +417,6 @@ async def chat_completions(request: Request):
                                 ],
                             }
                             yield f"data: {json.dumps(chunk)}\n\n"
-
             final_chunk = {
                 "id": chunk_id,
                 "object": "chat.completion.chunk",
@@ -472,7 +436,6 @@ async def chat_completions(request: Request):
             yield "data: [DONE]\n\n"
 
         return StreamingResponse(generate(), media_type="text/event-stream")
-
     else:
         prompt_tokens = sum(
             len(msg.get("content", "").split())
@@ -480,7 +443,6 @@ async def chat_completions(request: Request):
             if msg.get("content")
         )
         completion_tokens = len(clean_text.split()) if clean_text else 0
-
         if tool_calls:
             message_content = {
                 "role": "assistant",
@@ -489,7 +451,6 @@ async def chat_completions(request: Request):
             }
         else:
             message_content = {"role": "assistant", "content": clean_text or ""}
-
         response = {
             "id": completion_id,
             "object": "chat.completion",
@@ -515,12 +476,10 @@ async def chat_completions(request: Request):
 
 if __name__ == "__main__":
     import uvicorn
-    import ssl
     import os
 
     host = os.getenv("oai_host", "0.0.0.0")
     port = int(os.getenv("oai_port", "11434"))
-
     print("URL: {}://{}:{}".format("http", host, port))
     print("Available endpoints:")
     print("   ├─ OpenAI-compatible:")
@@ -535,7 +494,6 @@ if __name__ == "__main__":
     print("   ├─ Gemini 2.5 Pro/Flash")
     print("   ├─ Grok 3, Llama 4 Maverick")
     print("   └─ Qwen3, DeepSeek-R1")
-
     uvicorn.run(
         app,
         host=host,

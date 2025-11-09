@@ -1,15 +1,17 @@
 {
   "files.watcherExclude": {
     "**/data/**": true,
-    "**/__pycache__/**": true
+    "**/__pycache__/**": true,
+    "**/node_modules/**": true
   },
   "search.exclude": {
     "**/data/**": true,
-    "**/__pycache__/**": true
+    "**/__pycache__/**": true,
+    "**/node_modules/**": true
   },
   "files.exclude": {
-    "**/__pycache__/**": true
-    //   "**/data/**": true,
+    "**/__pycache__/**": true,
+    "**/node_modules/**": true
   },
   "oaicopilot.baseUrl": "http://localhost:11434",
   "oaicopilot.retry": {
