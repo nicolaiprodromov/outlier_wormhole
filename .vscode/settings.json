@@ -1,18 +1,21 @@
 {
   "files.watcherExclude": {
     "**/data/**": true,
+    "**/__pycache__/**": true
   },
   "search.exclude": {
     "**/data/**": true,
+    "**/__pycache__/**": true
   },
-  // "files.exclude": {
-  //   "**/data/**": true,
-  // },
+  "files.exclude": {
+    "**/__pycache__/**": true
+    //   "**/data/**": true,
+  },
   "oaicopilot.baseUrl": "http://localhost:11434",
   "oaicopilot.retry": {
-      "enabled": true,
-      "max_attempts": 3,
-      "interval_ms": 1000
+    "enabled": true,
+    "max_attempts": 3,
+    "interval_ms": 1000
   },
   "oaicopilot.models": [
     {

@@ -1,32 +1,17 @@
-# Git
 .git
 .gitignore
 .gitattributes
-
-# Environment
 .env
 .env.*
 !.env.example
-
-# Python
 __pycache__/
-
-# Data and logs
 data/
 *.log
 logs/
-
-# Docker
 docker-compose.yml
 Dockerfile
 services/*/Dockerfile
-
-# IDE
 .vscode/
-
-# Documentation
 README.md
 docs/
-
-# Scripts
 scripts/

@@ -9,11 +9,12 @@ load_dotenv()
 connected_clients = set()
 pending_responses = {}
 
+
 async def handler(websocket):
-    first_message  = True
+    first_message = True
     is_page_client = False
-    is_sender      = False
-    
+    is_sender = False
+
     try:
         async for message in websocket:
             if first_message:
@@ -21,33 +22,47 @@ async def handler(websocket):
                 try:
                     parsed = json.loads(message)
                     if parsed.get("type") == "sender":
-                        is_sender   = True
-                        command     = parsed.get("command")
-                        params      = parsed.get("params")
-                        request_id  = parsed.get("request_id")
-                        
+                        is_sender = True
+                        command = parsed.get("command")
+                        params = parsed.get("params")
+                        request_id = parsed.get("request_id")
+
                         if not connected_clients:
-                            await websocket.send(json.dumps({"success": False, "error": "No clients connected"}))
+                            await websocket.send(
+                                json.dumps(
+                                    {"success": False, "error": "No clients connected"}
+                                )
+                            )
                             return
                         else:
-                            message_to_send = json.dumps({"command": command, "params": params, "request_id": request_id})
+                            message_to_send = json.dumps(
+                                {
+                                    "command": command,
+                                    "params": params,
+                                    "request_id": request_id,
+                                }
+                            )
                             for client in list(connected_clients):
                                 try:
                                     await client.send(message_to_send)
-                                    print(f"│   └─ Sent command '{command}' to page client")
+                                    print(
+                                        f"│   └─ Sent command '{command}' to page client"
+                                    )
                                 except:
                                     connected_clients.discard(client)
-                            
+
                             pending_responses[request_id] = websocket
                         continue
                 except:
                     pass
-            
+
             if not is_page_client and not is_sender:
                 is_page_client = True
                 connected_clients.add(websocket)
-                print(f"├─ Page client connected. Total clients: {len(connected_clients)}")
-            
+                print(
+                    f"├─ Page client connected. Total clients: {len(connected_clients)}"
+                )
+
             try:
                 parsed = json.loads(message)
                 request_id = parsed.get("request_id")
@@ -58,23 +73,25 @@ async def handler(websocket):
                     print(f"│   └─ Response from page: {message}")
             except:
                 print(f"│   └─ Response from page: {message}")
-                
+
     except websockets.exceptions.ConnectionClosed:
         pass
     finally:
         if is_page_client:
             connected_clients.discard(websocket)
-            print(f"├─ Page client disconnected. Total clients: {len(connected_clients)}")
+            print(
+                f"├─ Page client disconnected. Total clients: {len(connected_clients)}"
+            )
+
 
 async def main():
     port = int(os.getenv("wormhole_port", 8765))
     host = os.getenv("wormhole_host", "0.0.0.0")
-    
-    # Use plain WebSocket (no SSL) for internal Docker network communication
-    # This avoids certificate validation issues between containers
+
     print(f"┌─ ws://{host}:{port}")
     async with websockets.serve(handler, host, port):
         await asyncio.Future()
+
 
 if __name__ == "__main__":
     asyncio.run(main())
