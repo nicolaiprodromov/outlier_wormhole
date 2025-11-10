@@ -10,6 +10,7 @@
   const csrfMatch = document.cookie.match(/_csrf=([^;]+)/);
   const csrfToken = csrfMatch ? decodeURIComponent(csrfMatch[1]) : "";
   try {
+    const combinedPrompt = systemMessage + "\n\n" + promptText;
     const messageResponse = await fetch(
       baseUrl + "/conversations/" + conversationId + "/turn-streaming",
       {
@@ -23,13 +24,13 @@
         body: JSON.stringify({
           prompt: {
             model: model,
-            text: promptText,
+            text: combinedPrompt,
             images: [],
-            systemMessage: systemMessage,
+            systemMessage: "",
             modelWasSwitched: false,
           },
           model: model,
-          systemMessage: systemMessage,
+          systemMessage: "",
           parentIdx: parentIdx,
         }),
       },

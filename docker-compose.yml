@@ -87,7 +87,7 @@ services:
       bridge:
         condition: service_started
     volumes:
-      - ./templates:/app/templates:ro
+      - ./services/oai/templates:/app/templates:ro
       - ./data:/app/data
     networks:
       - ow-net

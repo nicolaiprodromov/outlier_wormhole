@@ -251,6 +251,7 @@ async def chat_completions(request: Request):
     raw_user = ""
     user_request = ""
     attachments = ""
+    context = ""
     has_tool_results = False
     last_assistant_had_final_answer = False
 
@@ -260,6 +261,11 @@ async def chat_completions(request: Request):
 
         if role == "system":
             raw_system = content
+            context_match = re.search(
+                r"<context>(.*?)</context>", raw_system, re.DOTALL
+            )
+            if context_match:
+                context = context_match.group(0)
 
         elif role == "user":
             if isinstance(content, str):
@@ -324,7 +330,13 @@ async def chat_completions(request: Request):
     if tools and (not has_tool_results or last_assistant_had_final_answer):
         clean_text, tool_calls, conversation_id = (
             await agent_workflow.handle_initial_tool_request(
-                model, user_request, tools, attachments, raw_system
+                model,
+                user_request,
+                tools,
+                attachments,
+                context,
+                raw_system,
+                is_first=is_new_conversation,
             )
         )
         if conversation_id is None:
@@ -349,7 +361,11 @@ async def chat_completions(request: Request):
         else:
             clean_text, tool_calls, conversation_id = (
                 await agent_workflow.handle_simple_user_message(
-                    model, user_request, attachments, raw_system
+                    model,
+                    user_request,
+                    attachments,
+                    raw_system,
+                    is_first=is_new_conversation,
                 )
             )
             if conversation_id is None:

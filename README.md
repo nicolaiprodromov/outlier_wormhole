@@ -1,6 +1,6 @@
 # [weblm](https://app.outlier.ai) wormhole
 
-get _0$ 24/7_ sota llm models API via an **OpenAI/Ollama-compatible server**.
+get \_0$ sota llm models API via an **OpenAI/Ollama-compatible server**.
 
 ![Outlier Logo](https://app.outlier.ai/assets/llm-icons/claude-sonnet-4-5-20250929.svg)
 ![Outlier Logo](https://app.outlier.ai/assets/llm-icons/claude-opus-4-1-20250805.svg)

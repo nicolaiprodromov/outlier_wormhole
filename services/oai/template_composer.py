@@ -1,6 +1,11 @@
 import yaml
 from pathlib import Path
-from prompt_utils import populate_template, to_tool_calling_prompt, to_code_prompt
+from prompt_utils import (
+    populate_template,
+    to_tool_calling_prompt,
+    to_code_prompt,
+    to_simple_tool_prompt,
+)
 
 
 class TemplateComposer:
@@ -34,32 +39,53 @@ class TemplateComposer:
         custom_instructions=None,
         rules=None,
         attachments=None,
+        context=None,
         user_request=None,
+        is_first=False,
     ):
         tools_list = []
+        simple_tools_list = []
         if tools:
             for tool in tools:
                 tools_list.append(to_tool_calling_prompt(tool))
+                simple_tools_list.append(to_simple_tool_prompt(tool))
         variables = {
+            "system_content": self.get_system(),
             "tools": tools_list,
+            "simple_tools": simple_tools_list,
             "managed_agents": managed_agents or [],
             "custom_instructions": custom_instructions or "",
             "rules": rules or "",
             "attachments": attachments or "",
+            "context": context or "",
             "user_request": user_request or "",
         }
-        system_prompt_template = self.prompt_templates.get("system_prompt", "")
+        # Use first_system_prompt for the first message, system_prompt otherwise
+        template_key = "first_system_prompt" if is_first else "system_prompt"
+        system_prompt_template = self.prompt_templates.get(template_key, "")
         return populate_template(system_prompt_template, variables)
 
     def compose_tool_response(self, tool_output):
         template = self.prompt_templates.get("tool_response", "{{tool_output}}")
-        return populate_template(template, {"tool_output": tool_output})
+        return populate_template(
+            template, {"system_content": self.get_system(), "tool_output": tool_output}
+        )
 
-    def compose_simple_user(self, system=None, attachments=None, user_request=None):
-        template = self.prompt_templates.get("simple_user", "{{user_request}}")
+    def compose_simple_user(
+        self,
+        system=None,
+        attachments=None,
+        context=None,
+        user_request=None,
+        is_first=False,
+    ):
+        # Use first_simple_user for the first message, simple_user otherwise
+        template_key = "first_simple_user" if is_first else "simple_user"
+        template = self.prompt_templates.get(template_key, "{{user_request}}")
         variables = {
             "system": system or "",
             "attachments": attachments or "",
+            "context": context or "",
             "user_request": user_request or "",
         }
         return populate_template(template, variables)

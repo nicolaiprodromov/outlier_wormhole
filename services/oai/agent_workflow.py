@@ -4,7 +4,11 @@ import uuid
 from pathlib import Path
 from send import send_script_async
 from template_composer import TemplateComposer
-from prompt_utils import to_tool_calling_prompt
+from prompt_utils import (
+    to_tool_calling_prompt,
+    extract_client_instructions,
+    extract_context_tag,
+)
 
 
 class AgentWorkflow:
@@ -31,7 +35,7 @@ class AgentWorkflow:
         input_data = {
             "prompt": first_prompt or "Hello",
             "model": model,
-            "systemMessage": first_system or "You are a helpful chat assistant.",
+            "systemMessage": "",
         }
 
         print(f"[Agent Workflow] Creating new conversation for model: {model}")
@@ -64,13 +68,13 @@ class AgentWorkflow:
         conversation_id,
         prompt,
         model,
-        system_message="You are a helpful assistant.",
+        system_message="",
     ):
         input_data = {
             "conversationId": conversation_id,
             "prompt": prompt,
             "model": model,
-            "systemMessage": system_message,
+            "systemMessage": "",
         }
 
         print(f"[Agent] Sending prompt ({len(prompt)} chars) to Outlier")
@@ -88,7 +92,7 @@ class AgentWorkflow:
                 response = parsed_result.get("response", "")
                 print(f"[Agent] Got response ({len(response)} chars) from Outlier")
 
-                self.log_callback(conversation_id, prompt, system_message, response)
+                self.log_callback(conversation_id, prompt, "", response)
 
                 return response, parsed_result
 
@@ -146,7 +150,15 @@ class AgentWorkflow:
             or "<final_answer>" in response_text.lower()
         )
 
-    def initialize_system_prompt(self, tools, user_request, attachments=""):
+    def initialize_system_prompt(
+        self,
+        tools,
+        user_request,
+        attachments="",
+        context="",
+        custom_instructions="",
+        is_first=False,
+    ):
         rules_path = Path("templates/rules.mdx")
         rules_content = (
             rules_path.read_text(encoding="utf-8") if rules_path.exists() else ""
@@ -155,10 +167,12 @@ class AgentWorkflow:
         return self.composer.initialize_system_prompt(
             tools=tools,
             managed_agents=None,
-            custom_instructions=None,
+            custom_instructions=custom_instructions,
             rules=rules_content,
             attachments=attachments,
+            context=context,
             user_request=user_request,
+            is_first=is_first,
         )
 
     async def step(self, conversation_id, model):
@@ -171,15 +185,23 @@ class AgentWorkflow:
         return None, None, False
 
     async def execute_agent_loop(
-        self, conversation_id, user_request, model, tools, attachments=""
+        self,
+        conversation_id,
+        user_request,
+        model,
+        tools,
+        attachments="",
+        context="",
+        custom_instructions="",
+        is_first=False,
     ):
 
-        prompt = self.initialize_system_prompt(tools, user_request, attachments)
-
-        default_system = "You are a helpful assistant."
+        prompt = self.initialize_system_prompt(
+            tools, user_request, attachments, context, custom_instructions, is_first
+        )
 
         response_text, _ = await self.send_to_outlier(
-            conversation_id, prompt, model, default_system
+            conversation_id, prompt, model, ""
         )
 
         if response_text is None:
@@ -202,14 +224,41 @@ class AgentWorkflow:
             return response_text, None
 
     async def handle_initial_tool_request(
-        self, model, user_request, tools, attachments, raw_system
+        self,
+        model,
+        user_request,
+        tools,
+        attachments,
+        context,
+        raw_system,
+        is_first=False,
     ):
-        print(f"[Agent] handle_initial_tool_request: model={model}, tools={len(tools)}")
+        print(
+            f"[Agent] handle_initial_tool_request: model={model}, tools={len(tools)}, is_first={is_first}"
+        )
 
-        prompt = self.initialize_system_prompt(tools, user_request, attachments)
+        # Extract client-specific instructions from raw_system
+        custom_instructions = extract_client_instructions(raw_system)
+        if custom_instructions:
+            print(
+                f"[Agent] Extracted custom instructions: {len(custom_instructions)} chars"
+            )
+
+        if context:
+            print(f"[Agent] Received context: {len(context)} chars")
+
+        # Use is_first to determine which template to use
+        prompt = self.initialize_system_prompt(
+            tools,
+            user_request,
+            attachments,
+            context,
+            custom_instructions,
+            is_first=is_first,
+        )
 
         conversation_id, first_response = await self.get_or_create_conversation(
-            model, prompt, raw_system or self.composer.get_system()
+            model, prompt, ""
         )
 
         if not conversation_id:
@@ -220,7 +269,7 @@ class AgentWorkflow:
             self.log_callback(
                 conversation_id,
                 prompt,
-                raw_system or self.composer.get_system(),
+                "",
                 first_response,
             )
             if self.has_final_answer_marker(first_response):
@@ -231,7 +280,14 @@ class AgentWorkflow:
                 tool_calls = [tool_call] if tool_call else None
         else:
             clean_text, tool_calls = await self.execute_agent_loop(
-                conversation_id, user_request, model, tools, attachments
+                conversation_id,
+                user_request,
+                model,
+                tools,
+                attachments,
+                context,
+                custom_instructions,
+                is_first=is_first,
             )
 
         print(
@@ -242,35 +298,46 @@ class AgentWorkflow:
     async def handle_tool_response(self, model, messages, raw_system):
         print(f"[Agent] handle_tool_response: model={model}, messages={len(messages)}")
 
+        # Only process the MOST RECENT tool call and response to avoid exponential context growth
         tool_output_parts = []
-        for msg in messages:
-            role = msg.get("role")
-            content = msg.get("content", "")
+        last_assistant_msg = None
 
-            if role == "assistant":
-                tool_calls_in_msg = msg.get("tool_calls", [])
-                if tool_calls_in_msg:
-                    for tc in tool_calls_in_msg:
-                        func = tc.get("function", {})
-                        tool_output_parts.append(
-                            f"You called: {func.get('name')}({func.get('arguments')})"
-                        )
-            elif role == "tool":
+        # Find the last assistant message with tool calls
+        for msg in reversed(messages):
+            if msg.get("role") == "assistant" and msg.get("tool_calls"):
+                last_assistant_msg = msg
+                break
+
+        # Add the most recent tool call
+        if last_assistant_msg:
+            tool_calls_in_msg = last_assistant_msg.get("tool_calls", [])
+            for tc in tool_calls_in_msg:
+                func = tc.get("function", {})
+                tool_output_parts.append(
+                    f"You called: {func.get('name')}({func.get('arguments')})"
+                )
+
+        # Add only the most recent tool responses (since last assistant message)
+        collecting_responses = False
+        for msg in messages:
+            if msg == last_assistant_msg:
+                collecting_responses = True
+                continue
+            if collecting_responses and msg.get("role") == "tool":
                 tool_name = msg.get("name", "unknown_tool")
+                content = msg.get("content", "")
                 tool_output_parts.append(f"Tool '{tool_name}' returned: {content}")
 
         tool_output = "\n\n".join(tool_output_parts)
         prompt = self.composer.compose_tool_response(tool_output)
 
-        conversation_id, _ = await self.get_or_create_conversation(
-            model, prompt, self.composer.get_system()
-        )
+        conversation_id, _ = await self.get_or_create_conversation(model, prompt, "")
         if not conversation_id:
             print("[Agent] Failed to get conversation for tool response")
             return None, None, None
 
         response_text, _ = await self.send_to_outlier(
-            conversation_id, prompt, model, self.composer.get_system()
+            conversation_id, prompt, model, ""
         )
 
         if response_text is None:
@@ -289,27 +356,34 @@ class AgentWorkflow:
         return clean_text, tool_calls, conversation_id
 
     async def handle_simple_user_message(
-        self, model, user_request, attachments, raw_system
+        self, model, user_request, attachments, raw_system, is_first=False
     ):
-        print(f"[Agent Workflow] handling user message to {model}")
+        print(f"[Agent Workflow] handling user message to {model}, is_first={is_first}")
 
         system_content = self.composer.get_system()
 
+        # Extract context tag from raw_system
+        context = extract_context_tag(raw_system)
+        if context:
+            print(f"[Agent] Extracted context: {len(context)} chars")
+
         prompt = self.composer.compose_simple_user(
-            system=system_content, attachments=attachments, user_request=user_request
+            system=system_content,
+            attachments=attachments,
+            context=context,
+            user_request=user_request,
+            is_first=is_first,
         )
 
         conversation_id, first_response = await self.get_or_create_conversation(
-            model, prompt, raw_system or system_content
+            model, prompt, ""
         )
         if not conversation_id:
             print("[Agent Workflow] Failed to get or create conversation")
             return None, None, None
 
         if first_response:
-            self.log_callback(
-                conversation_id, prompt, raw_system or system_content, first_response
-            )
+            self.log_callback(conversation_id, prompt, "", first_response)
             clean_text = first_response
             tool_calls = None
         else:

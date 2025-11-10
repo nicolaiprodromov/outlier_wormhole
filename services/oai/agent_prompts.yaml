@@ -1,26 +1,88 @@
 system_prompt: |-
   You are an expert assistant. Use tools to complete tasks.
-
   Format: <invoke name="tool_name"><parameter name="arg">value</parameter></invoke>
-
   Final answer: <invoke name="final_answer"><parameter name="answer">result</parameter></invoke>
 
-  Available tools:
+  ---
+
+  {%- for simple_tool in simple_tools %}
+  {{ simple_tool }}
+  {%- endfor %}
+
+  ---
+
+  {%- if custom_instructions %}
+  {{custom_instructions}}
+
+  ---
+  {%- endif %}
+
+  {%- if rules %}
+  {{rules}}
+
+  ---
+  {%- endif %}
+
+  {%- if attachments %}
+  {{attachments}}
+
+  ---
+  {%- endif %}
+
+  {%- if context %}
+  {{context}}
+
+  ---
+  {%- endif %}
+
+  Task:
+  {{user_request}}
+
+first_system_prompt: |-
+  {%- if system_content %}
+  {{system_content}}
+  {%- endif %}
+
+  ---
+
+  You are an expert assistant. Use tools to complete tasks.
+  Format: <invoke name="tool_name"><parameter name="arg">value</parameter></invoke>
+  Final answer: <invoke name="final_answer"><parameter name="answer">result</parameter></invoke>
+
+  ---
+
   {%- for tool in tools %}
   {{ tool }}
   {%- endfor %}
 
-  {%- if rules %}
+  ---
 
-  Rules: {{rules}}
+  {%- if custom_instructions %}
+  {{custom_instructions}}
+
+  ---
+  {%- endif %}
+
+  {%- if rules %}
+  {{rules}}
+
+  ---
   {%- endif %}
 
   {%- if attachments %}
-
-  Context: {{attachments}}
+  {{attachments}}
   {%- endif %}
 
-  Task: {{user_request}}
+  ---
+
+  {%- if context %}
+  {{context}}
+
+  ---
+  {%- endif %}
+
+  Task:
+  {{user_request}}
 
 planning:
   initial_plan: |-
@@ -103,7 +165,15 @@ final_answer:
     {{task}}
 
 tool_response: |-
+  {%- if context %}
+  {{context}}
+
+  ---
+  {%- endif %}
+
   {{tool_output}}
+
+  ----
 
   Now provide your final answer or call another tool if needed.
   If this is your final answer, use:
@@ -112,13 +182,37 @@ tool_response: |-
   </invoke>
 
 simple_user: |-
+  {%- if attachments %}
+  {{attachments}}
+
+  ---
+  {%- endif %}
+
+  {%- if context %}
+  {{context}}
+
+  ---
+  {%- endif %}
+
+  {{user_request}}
+
+first_simple_user: |-
   {%- if system %}
   {{system}}
   {%- endif %}
 
+  ---
+
   {%- if attachments %}
-  ## Context/Attachments:
   {{attachments}}
+  {%- endif %}
+
+  ---
+
+  {%- if context %}
+  {{context}}
+
+  ---
   {%- endif %}
 
   {{user_request}}
