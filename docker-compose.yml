@@ -47,18 +47,15 @@ services:
       - "${PROXY_PORT:-8766}:${PROXY_PORT:-8766}"
     environment:
       - chrome_debug_port=${CHROME_DEBUG_PORT:-9222}
-      - chrome_user_data_dir=/tmp/chrome-debug
       - wormhole_server_host=server
       - wormhole_port=${WORMHOLE_PORT:-8765}
       - proxy_port=${PROXY_PORT:-8766}
-      - outlier_email=${OUTLIER_EMAIL}
-      - outlier_password=${OUTLIER_PASSWORD}
     depends_on:
       server:
         condition: service_healthy
     volumes:
       - ./services/bridge/inject_wormhole.js:/app/inject_wormhole.js:ro
-      - chrome-data:/tmp/chrome-debug
+      - ./data:/app/data
     networks:
       - ow-net
     restart: unless-stopped
@@ -153,8 +150,6 @@ networks:
     driver: bridge
 
 volumes:
-  chrome-data:
-    driver: local
   janitor-archives:
     driver: local
   janitor-logs:

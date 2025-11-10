@@ -15,3 +15,5 @@ services/*/Dockerfile
 README.md
 docs/
 scripts/
+!scripts/get_session/chrome_standalone/
+!scripts/get_session/chrome_profile/

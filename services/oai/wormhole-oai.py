@@ -7,7 +7,7 @@ import os
 import re
 from pathlib import Path
 from template_composer import TemplateComposer
-from dump_raw import dump_raw_prompts
+from logger import get_logger, dump_raw_prompts
 from agent_workflow import AgentWorkflow
 
 app = FastAPI()
@@ -42,20 +42,31 @@ def set_active_conversation(conversation_id):
 
 
 def log_to_data_folder(conversation_id, prompt, system_message, response):
-    timestamp = int(time.time())
-    if conversation_id not in conversation_logs:
-        conversation_logs[conversation_id] = []
-    log_entry = {
-        "timestamp": timestamp,
-        "index": len(conversation_logs[conversation_id]),
-    }
-    conversation_logs[conversation_id].append(log_entry)
-    conv_folder = DATA_FOLDER / conversation_id
-    conv_folder.mkdir(exist_ok=True)
-    index = log_entry["index"]
-    (conv_folder / f"{index}_system.md").write_text(system_message, encoding="utf-8")
-    (conv_folder / f"{index}_prompt.md").write_text(prompt, encoding="utf-8")
-    (conv_folder / f"{index}_response.md").write_text(response, encoding="utf-8")
+    """
+    Safe logging function that uses the thread-based logger.
+    Never blocks or raises exceptions - logging failures are caught and logged.
+    """
+    try:
+        timestamp = int(time.time())
+        if conversation_id not in conversation_logs:
+            conversation_logs[conversation_id] = []
+        log_entry = {
+            "timestamp": timestamp,
+            "index": len(conversation_logs[conversation_id]),
+        }
+        conversation_logs[conversation_id].append(log_entry)
+        index = log_entry["index"]
+
+        # Use the safe logger which handles this in a background thread
+        logger = get_logger()
+        logger.log_conversation(
+            conversation_id, index, system_message, prompt, response
+        )
+
+    except Exception as e:
+        # If even queuing fails, log it but don't crash
+        print(f"[log_to_data_folder] CRITICAL: Failed to queue log: {e}")
+        # Never raise - logging should not interrupt the main server
 
 
 @app.get("/api/version")

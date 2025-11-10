@@ -1,7 +1,6 @@
 import asyncio
 import os
-import subprocess
-import time
+from datetime import datetime
 from playwright.async_api import async_playwright
 from dotenv import load_dotenv
 
@@ -9,44 +8,61 @@ load_dotenv()
 
 
 async def inject_wormhole():
-    debug_port = os.getenv("chrome_debug_port", "9222")
-    user_data_dir = os.getenv("chrome_user_data_dir", "/tmp/chrome-debug")
     proxy_port = os.getenv("proxy_port", "8766")
 
-    chromium_path = "/ms-playwright/chromium-1091/chrome-linux/chrome"
+    # Use standalone Chrome with pre-authenticated profile
+    chrome_path = "/app/chrome_standalone/opt/google/chrome/chrome"
+    user_data_dir = "/app/chrome_profile"
 
-    chrome_process = subprocess.Popen(
-        [
-            chromium_path,
-            "--headless",
-            "--no-sandbox",
-            "--disable-dev-shm-usage",
-            "--disable-web-security",
-            "--allow-running-insecure-content",
-            "--reduce-security-for-testing",
-            "--ignore-certificate-errors",
-            f"--remote-debugging-port={debug_port}",
-            "--remote-debugging-address=0.0.0.0",
-            f"--user-data-dir={user_data_dir}",
-            "--disable-gpu",
-            "--disable-software-rasterizer",
-            "--log-level=3",
-            "--silent",
-            "--disable-logging",
-            "--disable-breakpad",
-            "https://app.outlier.ai/en/expert/login?redirect_url=%2Fexpert&clear=1",
-        ],
-        stderr=subprocess.DEVNULL,
-        stdout=subprocess.DEVNULL,
-    )
+    print("[Wormhole] ===== Chrome Configuration =====")
+    print(f"[Wormhole] Chrome executable: {chrome_path}")
+    print(f"[Wormhole] User data directory: {user_data_dir}")
+    print(f"[Wormhole] Proxy port: {proxy_port}")
 
-    print("[Wormhole] Launching Chrome...")
-    await asyncio.sleep(3)
+    # Verify profile exists
+    if not os.path.exists(user_data_dir):
+        print(f"[Wormhole] ERROR: Profile directory not found: {user_data_dir}")
+        return
+
+    print(f"[Wormhole] ✓ Profile directory exists")
+
+    # Check for important profile files
+    profile_files = ["Default/Cookies", "Default/Preferences", "Local State"]
+    for pfile in profile_files:
+        full_path = os.path.join(user_data_dir, pfile)
+        if os.path.exists(full_path):
+            size = os.path.getsize(full_path)
+            print(f"[Wormhole] ✓ Found {pfile} ({size} bytes)")
+        else:
+            print(f"[Wormhole] ⚠ Missing {pfile}")
+
+    print("[Wormhole] ===== Starting Chrome with Persistent Context =====")
 
     async with async_playwright() as p:
-        browser = await p.chromium.connect_over_cdp(f"http://127.0.0.1:{debug_port}")
-        context = browser.contexts[0]
-        page = context.pages[0]
+        # Use launch_persistent_context to properly load the user profile
+        context = await p.chromium.launch_persistent_context(
+            user_data_dir,
+            headless=True,
+            executable_path=chrome_path,
+            args=[
+                "--no-sandbox",
+                "--disable-dev-shm-usage",
+                "--disable-web-security",
+                "--allow-running-insecure-content",
+                "--reduce-security-for-testing",
+                "--ignore-certificate-errors",
+                "--disable-gpu",
+                "--disable-software-rasterizer",
+            ],
+        )
+
+        print("[Wormhole] ✓ Chrome launched with persistent context")
+
+        # Get the default page or create a new one
+        if len(context.pages) > 0:
+            page = context.pages[0]
+        else:
+            page = await context.new_page()
 
         def handle_console(msg):
             if msg.type in ["error", "warning"]:
@@ -54,103 +70,62 @@ async def inject_wormhole():
 
         page.on("console", handle_console)
 
+        # Log cookies to verify session
+        cookies = await context.cookies()
+        print(f"[Wormhole] Loaded {len(cookies)} cookies from profile")
+        csrf_cookie = next((c for c in cookies if c["name"] == "_csrf"), None)
+        if csrf_cookie:
+            print(f"[Wormhole] ✓ CSRF token found: {csrf_cookie['value'][:20]}...")
+        else:
+            print("[Wormhole] ⚠ No CSRF token in cookies yet")
+
+        print("[Wormhole] ===== Navigating to Outlier =====")
+        print("[Wormhole] Navigating to https://app.outlier.ai")
+
         try:
-            await page.wait_for_load_state("domcontentloaded", timeout=10000)
-        except:
-            pass
+            await page.goto(
+                "https://app.outlier.ai", wait_until="domcontentloaded", timeout=15000
+            )
+            await asyncio.sleep(2)
+        except Exception as e:
+            print(f"[Wormhole] Navigation error: {e}")
 
         current_url = page.url
-        print(f"[Wormhole] Current page: {current_url}")
+        print(f"[Wormhole] Current URL: {current_url}")
 
-        if "/login" in current_url:
-            email = os.getenv("outlier_email")
-            password = os.getenv("outlier_password")
+        # Take screenshot to verify state
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        screenshot_path = f"/app/data/auth_check_{timestamp}.png"
+        await page.screenshot(path=screenshot_path)
+        print(f"[Wormhole] Screenshot saved: {screenshot_path}")
 
-            if not email or not password:
-                print(
-                    "[Wormhole] Error: OUTLIER_EMAIL and OUTLIER_PASSWORD must be set"
-                )
+        # Check authentication status
+        if "/dashboard" in current_url:
+            print(
+                "[Wormhole] ✓✓✓ SUCCESS: Redirected to /dashboard - USER IS LOGGED IN ✓✓✓"
+            )
+        elif "/login" in current_url:
+            print(
+                "[Wormhole] ✗✗✗ FAILURE: Redirected to /login - USER IS NOT LOGGED IN ✗✗✗"
+            )
+            print(
+                "[Wormhole] ERROR: Session expired or invalid. Please run get_session.py to re-authenticate."
+            )
+            await context.close()
+            return
+        else:
+            print(f"[Wormhole] ⚠ Unexpected URL: {current_url}")
+            print("[Wormhole] Waiting a bit more to see if redirect happens...")
+            await asyncio.sleep(3)
+            current_url = page.url
+            print(f"[Wormhole] URL after wait: {current_url}")
+
+            if "/dashboard" not in current_url:
+                print("[Wormhole] ERROR: Not on dashboard. Cannot proceed.")
+                await context.close()
                 return
 
-            print("[Wormhole] Logging in...")
-
-            await page.wait_for_selector(
-                'input[type="email"]', state="visible", timeout=10000
-            )
-            await page.fill('input[type="email"]', email)
-            print(f"[Wormhole] Filled email: {email[:5]}...")
-
-            await page.wait_for_selector(
-                'input[type="password"]', state="visible", timeout=10000
-            )
-            await page.fill('input[type="password"]', password)
-            print("[Wormhole] Filled password")
-
-            await page.screenshot(path="/tmp/before_login.png")
-            print("[Wormhole] Screenshot saved to /tmp/before_login.png")
-
-            try:
-                login_button = await page.query_selector('button[type="submit"]')
-                if not login_button:
-                    login_button = await page.query_selector('button:has-text("Login")')
-                if not login_button:
-                    login_button = await page.query_selector(
-                        'button:has-text("Sign in")'
-                    )
-                if not login_button:
-                    login_button = await page.query_selector(
-                        'button:has-text("Log in")'
-                    )
-
-                if login_button:
-                    button_text = await login_button.inner_text()
-                    print(f"[Wormhole] Found login button with text: '{button_text}'")
-                    await login_button.click()
-                    await asyncio.sleep(2)
-                else:
-                    print("[Wormhole] Login button not found, trying Enter key...")
-                    await page.keyboard.press("Enter")
-                    await asyncio.sleep(2)
-            except Exception as e:
-                print(f"[Wormhole] Error clicking login button: {e}")
-
-            print("[Wormhole] Waiting for navigation after login...")
-            try:
-                for i in range(30):
-                    await asyncio.sleep(1)
-                    current = page.url
-                    if (
-                        "outlier.ai" in current
-                        and "/login" not in current
-                        and "/logout" not in current
-                    ):
-                        print(
-                            f"[Wormhole] Successfully logged in! Current URL: {current}"
-                        )
-                        break
-                    if i == 29:
-                        raise Exception("Timeout waiting for login redirect")
-
-                cookies = await context.cookies()
-                csrf_cookie = next((c for c in cookies if c["name"] == "_csrf"), None)
-                if csrf_cookie:
-                    print(
-                        f"[Wormhole] CSRF token found: {csrf_cookie['value'][:20]}..."
-                    )
-                else:
-                    print("[Wormhole] WARNING: No CSRF token found!")
-                    print(
-                        f"[Wormhole] Available cookies: {[c['name'] for c in cookies]}"
-                    )
-            except Exception as e:
-                print(
-                    f"[Wormhole] Navigation timeout or error: {e}. Current URL: {page.url}"
-                )
-                print(
-                    "[Wormhole] Login may have failed - API calls will likely return 401"
-                )
-        else:
-            print("[Wormhole] Already logged in!")
+        print("[Wormhole] ===== Session Verified - Proceeding with Injection =====")
 
         print("[Wormhole] Closing extra tabs...")
         for p in context.pages:
@@ -182,7 +157,7 @@ async def inject_wormhole():
                 return
 
             await page.evaluate(script)
-            print(f"[Wormhole] Injected into: {page.url}")
+            print(f"[Wormhole] ✓ Injected into: {page.url}")
             try:
                 status = await page.evaluate("window.__wormhole__.status()")
                 print(f"[Wormhole] Status: {status}")
@@ -195,6 +170,7 @@ async def inject_wormhole():
 
         context.on("page", lambda page: asyncio.create_task(handle_page(page)))
 
+        print("[Wormhole] ===== Wormhole Active =====")
         print("[Wormhole] Persistent injection enabled. Monitoring all pages...")
         print("[Wormhole] Press Ctrl+C to stop")
 
@@ -203,7 +179,7 @@ async def inject_wormhole():
                 await asyncio.sleep(1)
         except KeyboardInterrupt:
             print("\n[Wormhole] Shutting down...")
-            chrome_process.terminate()
+            await context.close()
 
 
 if __name__ == "__main__":

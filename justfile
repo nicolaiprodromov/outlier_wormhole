@@ -1,5 +1,3 @@
-set shell := ["powershell.exe", "-c"]
-
 build:
     docker compose build
 

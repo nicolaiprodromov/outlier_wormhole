@@ -2,3 +2,6 @@
 data/
 __pycache__/
 node_modules/
+scripts/get_session/chrome_profile/
+scripts/get_session/chrome_standalone/
+scripts/get_session/venv/

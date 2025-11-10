@@ -10,7 +10,7 @@ COPY services/oai/send.py .
 COPY services/oai/agent_workflow.py .
 COPY services/oai/template_composer.py .
 COPY services/oai/prompt_utils.py .
-COPY services/oai/dump_raw.py .
+COPY services/oai/logger.py .
 COPY services/oai/create_conversation.js .
 COPY services/oai/send_message.js .
 COPY services/oai/agent_prompts.yaml .

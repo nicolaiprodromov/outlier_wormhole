@@ -1,6 +1,6 @@
-# [app.outlier.ai](https://app.outlier.ai) wormhole
+# [weblm](https://app.outlier.ai) wormhole
 
-get _0$ 24/7_ sota models API via an **OpenAI/Ollama-compatible server**.
+get _0$ 24/7_ sota llm models API via an **OpenAI/Ollama-compatible server**.
 
 ![Outlier Logo](https://app.outlier.ai/assets/llm-icons/claude-sonnet-4-5-20250929.svg)
 ![Outlier Logo](https://app.outlier.ai/assets/llm-icons/claude-opus-4-1-20250805.svg)
@@ -13,14 +13,13 @@ get _0$ 24/7_ sota models API via an **OpenAI/Ollama-compatible server**.
 
 ```json
 ┌─────────────────────────────────────────────────────────────┐
-│                            Client                           │
-│                      `localhost:11434`                      │
+├──────────────────────────── Client ─────────────────────────┤
 └────────────────────────────── ▲ ────────────────────────────┘
                                 │
 ┌────────────────────────────── ▼ ────────────────────────────┐
 │                      OAI service `:11434`                   │
 ├─────────────────────────────────────────────────────────────┤
-│  • OpenAI-compatible API (/v1/chat/completions)             │
+│  • openAI-compatible API (/v1/chat/completions)             │
 │  • handles conversation tracking & template composition     │
 │  • logs all prompts/responses to `data/`                    │
 └────────────────────────────── ▲ ────────────────────────────┘
@@ -43,24 +42,20 @@ get _0$ 24/7_ sota models API via an **OpenAI/Ollama-compatible server**.
 └─────────────────────────────────────────────────────────────┘
 ```
 
-## Quick Start
+## "quick" start
 
 > [!IMPORTANT]
 >
 > you need go through the annoying process of making an outlier/scaleai account to use the _outlier playground_.
 
-**Prerequisites:**
+**prerequisites:**
 
-- Docker (running)
+- [docker](https://www.docker.com/get-started) (running)
 - [just](https://github.com/casey/just) (optional)
 
 ---
 
-1. Clone this repository, fill in the `.env` and run `just start` (or run `docker compose up --build -d`)
-
-### OR
-
-1. **Create a new directory and add these two files:**
+1. **clone this repository or create a new directory and add these two files:**
 
    `docker-compose.yml`:
 
@@ -71,9 +66,9 @@ get _0$ 24/7_ sota models API via an **OpenAI/Ollama-compatible server**.
        image: nicolaiprodromov/ow-server:latest
        container_name: server
        ports:
-         - "8765:8765"
+         - "${WORMHOLE_PORT:-8765}:${WORMHOLE_PORT:-8765}"
        environment:
-         - wormhole_port=8765
+         - wormhole_port=${WORMHOLE_PORT:-8765}
          - wormhole_host=0.0.0.0
        networks:
          - ow-net
@@ -89,41 +84,48 @@ get _0$ 24/7_ sota models API via an **OpenAI/Ollama-compatible server**.
          timeout: 5s
          retries: 5
        restart: unless-stopped
+       logging:
+         driver: "json-file"
+         options:
+           max-size: "10m"
+           max-file: "3"
 
      bridge:
        image: nicolaiprodromov/ow-bridge:latest
        container_name: bridge
        ports:
-         - "9222:9222"
-         - "8766:8766"
+         - "${CHROME_DEBUG_PORT:-9222}:${CHROME_DEBUG_PORT:-9222}"
+         - "${PROXY_PORT:-8766}:${PROXY_PORT:-8766}"
        environment:
-         - chrome_debug_port=9222
-         - chrome_user_data_dir=/tmp/chrome-debug
+         - chrome_debug_port=${CHROME_DEBUG_PORT:-9222}
          - wormhole_server_host=server
-         - wormhole_port=8765
-         - proxy_port=8766
-         - outlier_email=${OUTLIER_EMAIL}
-         - outlier_password=${OUTLIER_PASSWORD}
+         - wormhole_port=${WORMHOLE_PORT:-8765}
+         - proxy_port=${PROXY_PORT:-8766}
        depends_on:
          server:
            condition: service_healthy
        volumes:
-         - chrome-data:/tmp/chrome-debug
+         - ./data:/app/data
        networks:
          - ow-net
        restart: unless-stopped
        shm_size: 2gb
+       logging:
+         driver: "json-file"
+         options:
+           max-size: "10m"
+           max-file: "3"
 
      oai:
        image: nicolaiprodromov/ow-oai:latest
        container_name: oai
        ports:
-         - "11434:11434"
+         - "${OAI_PORT:-11434}:${OAI_PORT:-11434}"
        environment:
          - oai_host=0.0.0.0
-         - oai_port=11434
+         - oai_port=${OAI_PORT:-11434}
          - wormhole_server_host=server
-         - wormhole_port=8765
+         - wormhole_port=${WORMHOLE_PORT:-8765}
        depends_on:
          server:
            condition: service_healthy
@@ -145,41 +147,55 @@ get _0$ 24/7_ sota models API via an **OpenAI/Ollama-compatible server**.
          timeout: 5s
          retries: 3
        restart: unless-stopped
+       logging:
+         driver: "json-file"
+         options:
+           max-size: "10m"
+           max-file: "3"
 
    networks:
      ow-net:
        driver: bridge
-
-   volumes:
-     chrome-data:
-       driver: local
    ```
 
    `.env`:
 
    ```env
-   outlier_email="your@email"
-   outlier_password="yourpassword"
-
-   wormhole_port=8765
-   chrome_debug_port=9222
-   proxy_port=8766
-   oai_port=11434
+     wormhole_port=8765
+     chrome_debug_port=9222
+     proxy_port=8766
+     oai_port=11434
    ```
 
-2. **Start the services:**
+2. **run `get_session` to log into Outlier and store your session:**
+
+- with `python` (you can use venv or any environment you like):
+  1. run `python scripts/get_session.py --headful` and login to Outlier.ai when the browser opens than close it.
+  2. run `python scripts/get_session.py --headless` to convert your session
+- with `just`:
+  1. run `just get_session --headful` and login to Outlier.ai when the browser opens than close it.
+  2. run `just get_session --headless` to convert your session data to headless mode.
+
+2. **start the services:**
+
+   ```just
+   just build
+   just start
+   ```
+
+   or
 
    ```bash
-   docker compose up -d
+   docker compose up --build -d
    ```
 
-3. **Point any OpenAI-compatible client to `http://localhost:11434`**
+3. **point any OpenAI-compatible client to `http://localhost:11434`**
 
-## Use with your IDE
+## use with your IDE
 
-### VS Code
+### vscode
 
-- **Download [johnny-zhao.oai-compatible-copilot](https://marketplace.visualstudio.com/items?itemName=johnny-zhao.oai-compatible-copilot) and add these to `.vscode/settings.json`:**
+- **download [johnny-zhao.oai-compatible-copilot](https://marketplace.visualstudio.com/items?itemName=johnny-zhao.oai-compatible-copilot) and add these to `.vscode/settings.json`:**
 
   ```json
   "oaicopilot.baseUrl": "http://localhost:11434",
@@ -199,17 +215,17 @@ get _0$ 24/7_ sota models API via an **OpenAI/Ollama-compatible server**.
     ]
   ```
 
-### Cursor
+### cursor
 
-- **In Cursor settings, configure the API endpoint:**
-  1. Open Settings (`Cmd/Ctrl + ,`)
-  2. Go to `Cursor Settings` > `Models`
-  3. In the OpenAI API Key section, click **"Override OpenAI Base URL (when using key)"**
-  4. Toggle it ON and enter: `http://localhost:11434/v1`
-  5. Add your OpenAI API key (can be any non-empty string, e.g., `outlier`)
-  6. The model picker will automatically show available models from your endpoint
+- **in Cursor settings, configure the API endpoint:**
+  1. open Settings (`Cmd/Ctrl + ,`)
+  2. go to `Cursor Settings` > `Models`
+  3. in the OpenAI API Key section, click **"Override OpenAI Base URL (when using key)"**
+  4. toggle it ON and enter: `http://localhost:11434/v1`
+  5. add your openai API key (can be any non-empty string, e.g., `outlier`)
+  6. the model picker will automatically show available models from your endpoint
 
-## Commands
+## commands
 
 ```bash
 docker compose up -d              # Start services
@@ -221,29 +237,46 @@ docker compose ps                 # Check status
 docker compose logs -f [service]  # View logs
 ```
 
-## Containers
+## containers
 
-### Server (`services/server/`)
+### server (`services/server/`)
 
-- WebSocket relay server that connects OAI and Bridge services. Manages request/response routing and maintains client connections:
+- webSocket relay server that connects OAI and bridge services. manages request/response routing and maintains persistent client connections:
   - **Port:** 8765
 
-### Bridge (`services/bridge/`)
+### bridge (`services/bridge/`)
 
-- Automated Chrome browser that logs into Outlier.ai and injects control scripts. Acts as the interface between the wormhole system and Outlier's web app.
-  - **Ports:** 8766 (proxy), 9222 (chrome debug)
+- automated Chrome browser that logs into outlier webpage and injects control scripts. acts as the interface between the wormhole system and Outlier's web app.
+  - **ports:** 8766 (proxy), 9222 (chrome debug)
 
 ### OAI (`services/oai/`)
 
-- FastAPI server providing OpenAI-compatible endpoints. Transforms requests into Outlier commands, manages conversation state, and logs all interactions.
-  - **Port:** 11434
+- fastAPI server providing OpenAI-compatible endpoints. transforms requests into outlier api calls, manages conversation state, and logs all interactions.
+  - **port:** 11434
 
-### Janitor (`services/janitor/`) - optional
+### janitor (`services/janitor/`) - optional
 
-- A clean-up service to keep the logs size in check, fully configurable.
+- a clean-up service to keep the logs size in check, fully configurable.
 
-<div align="right">
+## roadmap
 
-![Outlier Logo](https://app.outlier.ai/assets/logo.svg)
+> the end goal here is to create a plug-n-play solution to hijack as many llm providers as possible and get as many free powerful llm agents as we can.
+
+> right now only outlier is supported and no account rotation is even feasable, but in the future i will keep adding more providers and proxy/account rotation features to maximize free agent use.
+
+> stop serfing the bigweb and enjoy the wildwest of post-truth AI-induced collective coma we're in.
+
+- - [x] OpenAI-compatible API
+- - [x] Ollama-compatible API
+- - [x] template-based prompt injection
+- - [ ] support for file uploads
+- - [ ] support for streaming responses
+- - [ ] support for more platforms
+- - [ ] proxy rotation
+- - [ ] account rotation
+
+<div align="center" width="120px">
+
+<img width="100px" src="https://app.outlier.ai/assets/logo.svg"/>
 
 </div>
