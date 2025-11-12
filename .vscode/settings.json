@@ -23,98 +23,98 @@
   "oaicopilot.models": [
     {
       "id": "gpt-5-chat",
-      "name": "GPT-5 Chat",
-      "owned_by": "openai"
+      "displayName": "GPT-5 Chat [outlier]",
+      "owned_by": "outlier"
     },
     {
       "id": "gpt-5-2025-08-07",
-      "name": "GPT-5 (2025-08-07)",
-      "owned_by": "openai"
+      "displayName": "GPT-5 (2025-08-07) [outlier]",
+      "owned_by": "outlier"
     },
     {
       "id": "GPT-4o",
-      "name": "GPT-4o",
-      "owned_by": "openai"
+      "displayName": "GPT-4o [outlier]",
+      "owned_by": "outlier"
     },
     {
       "id": "gpt-4o-audio-preview-2025-06-03",
-      "name": "GPT-4o Audio Preview",
-      "owned_by": "openai"
+      "displayName": "GPT-4o Audio Preview [outlier]",
+      "owned_by": "outlier"
     },
     {
       "id": "gpt-4o-mini-audio-preview-2024-12-17",
-      "name": "GPT-4o Mini Audio Preview",
-      "owned_by": "openai"
+      "displayName": "GPT-4o Mini Audio Preview [outlier]",
+      "owned_by": "outlier"
     },
     {
       "id": "GPT-4.1",
-      "name": "GPT-4.1",
-      "owned_by": "openai"
+      "displayName": "GPT-4.1 [outlier]",
+      "owned_by": "outlier"
     },
     {
       "id": "o3",
-      "name": "o3",
-      "owned_by": "openai"
+      "displayName": "o3 [outlier]",
+      "owned_by": "outlier"
     },
     {
       "id": "o4-mini",
-      "name": "o4-mini",
-      "owned_by": "openai"
+      "displayName": "o4-mini [outlier]",
+      "owned_by": "outlier"
     },
     {
       "id": "claude-sonnet-4-5-20250929",
-      "name": "Claude Sonnet 4.5",
-      "owned_by": "anthropic"
+      "displayName": "Claude Sonnet 4.5 [outlier]",
+      "owned_by": "outlier"
     },
     {
       "id": "claude-haiku-4-5-20251001",
-      "name": "Claude Haiku 4.5",
-      "owned_by": "anthropic"
+      "displayName": "Claude Haiku 4.5 [outlier]",
+      "owned_by": "outlier"
     },
     {
       "id": "claude-opus-4-1-20250805",
-      "name": "Claude Opus 4.1",
-      "owned_by": "anthropic"
+      "displayName": "Claude Opus 4.1 [outlier]",
+      "owned_by": "outlier"
     },
     {
       "id": "claude-opus-4-20250514",
-      "name": "Claude Opus 4",
-      "owned_by": "anthropic"
+      "displayName": "Claude Opus 4 [outlier]",
+      "owned_by": "outlier"
     },
     {
       "id": "claude-sonnet-4-20250514",
-      "name": "Claude Sonnet 4",
-      "owned_by": "anthropic"
+      "displayName": "Claude Sonnet 4 [outlier]",
+      "owned_by": "outlier"
     },
     {
       "id": "gemini-2.5-pro-preview-06-05",
-      "name": "Gemini 2.5 Pro Preview",
-      "owned_by": "google"
+      "displayName": "Gemini 2.5 Pro Preview [outlier]",
+      "owned_by": "outlier"
     },
     {
       "id": "gemini-2.5-flash-preview-05-20",
-      "name": "Gemini 2.5 Flash Preview",
-      "owned_by": "google"
+      "displayName": "Gemini 2.5 Flash Preview [outlier]",
+      "owned_by": "outlier"
     },
     {
       "id": "Grok 3",
-      "name": "Grok 3",
-      "owned_by": "xai"
+      "displayName": "Grok 3 [outlier]",
+      "owned_by": "outlier"
     },
     {
       "id": "Llama 4 Maverick",
-      "name": "Llama 4 Maverick",
-      "owned_by": "meta"
+      "displayName": "Llama 4 Maverick [outlier]",
+      "owned_by": "outlier"
     },
     {
       "id": "qwen3-235b-a22b-2507-v1",
-      "name": "Qwen3 235B",
-      "owned_by": "alibaba"
+      "displayName": "Qwen3 235B [outlier]",
+      "owned_by": "outlier"
     },
     {
       "id": "deepseek-r1-0528",
-      "name": "DeepSeek R1",
-      "owned_by": "deepseek"
+      "displayName": "DeepSeek R1 [outlier]",
+      "owned_by": "outlier"
     }
   ],
   "workbench.colorTheme": "GitHub Dark",
