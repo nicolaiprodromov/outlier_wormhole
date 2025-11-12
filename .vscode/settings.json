@@ -14,7 +14,7 @@
     "**/__pycache__/**": true,
     "**/node_modules/**": true
   },
-  "oaicopilot.baseUrl": "http://localhost:11434",
+  "oaicopilot.baseUrl": "https://membership-titles-calls-gorgeous.trycloudflare.com",
   "oaicopilot.retry": {
     "enabled": true,
     "max_attempts": 3,

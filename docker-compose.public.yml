@@ -94,6 +94,25 @@ services:
         max-size: "10m"
         max-file: "3"
 
+  tunnel:
+    image: nicolaiprodromov/ow-tunnel:latest
+    container_name: tunnel
+    environment:
+      - oai_port=${oai_port:-11434}
+    depends_on:
+      oai:
+        condition: service_healthy
+    volumes:
+      - ./data:/app/data
+    networks:
+      - ow-net
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
 networks:
   ow-net:
     driver: bridge
