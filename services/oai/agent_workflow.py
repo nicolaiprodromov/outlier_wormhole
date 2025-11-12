@@ -278,6 +278,8 @@ class AgentWorkflow:
             else:
                 clean_text, tool_call = self.parse_tool_call(first_response)
                 tool_calls = [tool_call] if tool_call else None
+                if not clean_text and not tool_call:
+                    clean_text = first_response
         else:
             clean_text, tool_calls = await self.execute_agent_loop(
                 conversation_id,
@@ -297,6 +299,11 @@ class AgentWorkflow:
 
     async def handle_tool_response(self, model, messages, raw_system):
         print(f"[Agent] handle_tool_response: model={model}, messages={len(messages)}")
+
+        # Extract context tag from raw_system
+        context = extract_context_tag(raw_system)
+        if context:
+            print(f"[Agent] Extracted context for tool response: {len(context)} chars")
 
         # Only process the MOST RECENT tool call and response to avoid exponential context growth
         tool_output_parts = []
@@ -329,7 +336,7 @@ class AgentWorkflow:
                 tool_output_parts.append(f"Tool '{tool_name}' returned: {content}")
 
         tool_output = "\n\n".join(tool_output_parts)
-        prompt = self.composer.compose_tool_response(tool_output)
+        prompt = self.composer.compose_tool_response(tool_output, context)
 
         conversation_id, _ = await self.get_or_create_conversation(model, prompt, "")
         if not conversation_id:

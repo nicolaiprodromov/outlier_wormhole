@@ -65,10 +65,15 @@ class TemplateComposer:
         system_prompt_template = self.prompt_templates.get(template_key, "")
         return populate_template(system_prompt_template, variables)
 
-    def compose_tool_response(self, tool_output):
+    def compose_tool_response(self, tool_output, context=None):
         template = self.prompt_templates.get("tool_response", "{{tool_output}}")
         return populate_template(
-            template, {"system_content": self.get_system(), "tool_output": tool_output}
+            template,
+            {
+                "system_content": self.get_system(),
+                "tool_output": tool_output,
+                "context": context or "",
+            },
         )
 
     def compose_simple_user(
