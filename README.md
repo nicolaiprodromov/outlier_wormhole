@@ -55,7 +55,7 @@ get 0$ sota llm models API via an **OpenAI/Ollama-compatible server**.
 
 ---
 
-you have two options to get started:
+you have two options to get started, cloning the repo is easier, but first option is more lightweight:
 
 ### easy:
 
@@ -74,7 +74,9 @@ you have two options to get started:
    oai_port=11434
    ```
 
-3. run your local chrome, login to outlier and exit.
+3. run your local chrome, login to outlier and exit, after that run chrome in headless mode to convert your profile and exit:
+
+> `/path/to/chrome --user-data-dir=/path/to/chrome-profile --headless --remote-debugging-port=9222`
 
 4. point the docker-compose file to the chrome executable and copy (recommended) the profile folder to the location you specified in the `docker-compose.yml`.
 
