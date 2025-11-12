@@ -11,7 +11,7 @@ get 0$ sota llm models API via an **OpenAI/Ollama-compatible server**.
 ![Outlier Logo](https://app.outlier.ai/assets/llm-icons/Llama%204%20Maverick.svg)
 ![Outlier Logo](https://app.outlier.ai/assets/llm-icons/qwen3-235b-a22b-2507-v1.svg)
 
-```json
+```bash
 ┌─────────────────────────────────────────────────────────────┐
 ├──────────────────────────── Client ─────────────────────────┤
 └────────────────────────────── ▲ ────────────────────────────┘
@@ -55,116 +55,17 @@ get 0$ sota llm models API via an **OpenAI/Ollama-compatible server**.
 
 ---
 
-1. **clone this repository or create a new directory and add these two files:**
-
-   `docker-compose.yml`:
-
-   ```yaml
-   name: ow
-   services:
-     server:
-       image: nicolaiprodromov/ow-server:latest
-       container_name: server
-       ports:
-         - "${WORMHOLE_PORT:-8765}:${WORMHOLE_PORT:-8765}"
-       environment:
-         - wormhole_port=${WORMHOLE_PORT:-8765}
-         - wormhole_host=0.0.0.0
-       networks:
-         - ow-net
-       healthcheck:
-         test:
-           [
-             "CMD",
-             "python",
-             "-c",
-             "import socket; s = socket.socket(); s.connect(('localhost', 8765)); s.close()",
-           ]
-         interval: 10s
-         timeout: 5s
-         retries: 5
-       restart: unless-stopped
-       logging:
-         driver: "json-file"
-         options:
-           max-size: "10m"
-           max-file: "3"
-
-     bridge:
-       image: nicolaiprodromov/ow-bridge:latest
-       container_name: bridge
-       ports:
-         - "${CHROME_DEBUG_PORT:-9222}:${CHROME_DEBUG_PORT:-9222}"
-         - "${PROXY_PORT:-8766}:${PROXY_PORT:-8766}"
-       environment:
-         - chrome_debug_port=${CHROME_DEBUG_PORT:-9222}
-         - wormhole_server_host=server
-         - wormhole_port=${WORMHOLE_PORT:-8765}
-         - proxy_port=${PROXY_PORT:-8766}
-       depends_on:
-         server:
-           condition: service_healthy
-       volumes:
-         - ./data:/app/data
-       networks:
-         - ow-net
-       restart: unless-stopped
-       shm_size: 2gb
-       logging:
-         driver: "json-file"
-         options:
-           max-size: "10m"
-           max-file: "3"
-
-     oai:
-       image: nicolaiprodromov/ow-oai:latest
-       container_name: oai
-       ports:
-         - "${OAI_PORT:-11434}:${OAI_PORT:-11434}"
-       environment:
-         - oai_host=0.0.0.0
-         - oai_port=${OAI_PORT:-11434}
-         - wormhole_server_host=server
-         - wormhole_port=${WORMHOLE_PORT:-8765}
-       depends_on:
-         server:
-           condition: service_healthy
-         bridge:
-           condition: service_started
-       volumes:
-         - ./data:/app/data
-       networks:
-         - ow-net
-       healthcheck:
-         test:
-           [
-             "CMD",
-             "python",
-             "-c",
-             "import urllib.request; urllib.request.urlopen('http://localhost:11434/api/version').read()",
-           ]
-         interval: 15s
-         timeout: 5s
-         retries: 3
-       restart: unless-stopped
-       logging:
-         driver: "json-file"
-         options:
-           max-size: "10m"
-           max-file: "3"
-
-   networks:
-     ow-net:
-       driver: bridge
-   ```
-
-   `.env`:
+1. **clone this repository & rename `.env.example` to `.env` & replace the content of `.env` with:**
 
    ```env
-     wormhole_port=8765
-     chrome_debug_port=9222
-     proxy_port=8766
-     oai_port=11434
+   # security
+   OAI_API_KEY=
+
+   # ports
+   wormhole_port=8765
+   chrome_debug_port=9222
+   proxy_port=8766
+   oai_port=11434
    ```
 
 2. **run `get_session` to log into Outlier and store your session:**

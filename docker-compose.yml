@@ -56,6 +56,8 @@ services:
     volumes:
       - ./services/bridge/inject_wormhole.js:/app/inject_wormhole.js:ro
       - ./data:/app/data
+      - ./scripts/get_session/chrome_standalone:/app/chrome_standalone:ro
+      - ./scripts/get_session/chrome_profile:/app/chrome_profile
     networks:
       - ow-net
     restart: unless-stopped
@@ -81,6 +83,7 @@ services:
       - oai_port=${OAI_PORT:-11434}
       - wormhole_server_host=server
       - wormhole_port=${WORMHOLE_PORT:-8765}
+      - OAI_API_KEY=${OAI_API_KEY}
     depends_on:
       server:
         condition: service_healthy

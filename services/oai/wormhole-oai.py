@@ -1,5 +1,5 @@
 from fastapi import FastAPI, Request
-from fastapi.responses import StreamingResponse
+from fastapi.responses import StreamingResponse, JSONResponse
 import json
 import time
 import uuid
@@ -12,13 +12,57 @@ from agent_workflow import AgentWorkflow
 
 app = FastAPI()
 
+REQUIRED_API_KEY = os.getenv("OAI_API_KEY")
+
 
 @app.middleware("http")
-async def accept_authorization_header(request: Request, call_next):
-    auth_header = request.headers.get("authorization", "None")
-    print(
-        f"[Request] {request.method} {request.url.path} | Auth: {auth_header[:50] if auth_header != 'None' else 'None'}..."
-    )
+async def authenticate_and_log(request: Request, call_next):
+    auth_header = request.headers.get("authorization", "")
+
+    if request.url.path in ["/api/version", "/v1/models"]:
+        print(
+            f"[Request] {request.method} {request.url.path} | Auth: Skipped (public endpoint)"
+        )
+        response = await call_next(request)
+        print(f"[Response] Status: {response.status_code}")
+        return response
+
+    if not auth_header.startswith("Bearer "):
+        print(f"[Auth] Missing or invalid authorization header")
+        return JSONResponse(
+            status_code=401,
+            content={
+                "error": {
+                    "message": "Missing or invalid authorization header",
+                    "type": "invalid_request_error",
+                }
+            },
+        )
+
+    provided_key = auth_header.replace("Bearer ", "")
+
+    if not REQUIRED_API_KEY:
+        print(f"[Auth] WARNING: No API key configured (OAI_API_KEY not set)")
+        return JSONResponse(
+            status_code=500,
+            content={
+                "error": {
+                    "message": "Server configuration error: API key not configured",
+                    "type": "server_error",
+                }
+            },
+        )
+
+    if provided_key != REQUIRED_API_KEY:
+        print(f"[Auth] Invalid API key attempt: {provided_key[:10]}...")
+        return JSONResponse(
+            status_code=403,
+            content={
+                "error": {"message": "Invalid API key", "type": "invalid_request_error"}
+            },
+        )
+
+    print(f"[Request] {request.method} {request.url.path} | Auth: Valid")
     response = await call_next(request)
     print(f"[Response] Status: {response.status_code}")
     return response
@@ -42,10 +86,6 @@ def set_active_conversation(conversation_id):
 
 
 def log_to_data_folder(conversation_id, prompt, system_message, response):
-    """
-    Safe logging function that uses the thread-based logger.
-    Never blocks or raises exceptions - logging failures are caught and logged.
-    """
     try:
         timestamp = int(time.time())
         if conversation_id not in conversation_logs:
@@ -57,16 +97,13 @@ def log_to_data_folder(conversation_id, prompt, system_message, response):
         conversation_logs[conversation_id].append(log_entry)
         index = log_entry["index"]
 
-        # Use the safe logger which handles this in a background thread
         logger = get_logger()
         logger.log_conversation(
             conversation_id, index, system_message, prompt, response
         )
 
     except Exception as e:
-        # If even queuing fails, log it but don't crash
         print(f"[log_to_data_folder] CRITICAL: Failed to queue log: {e}")
-        # Never raise - logging should not interrupt the main server
 
 
 @app.get("/api/version")
@@ -279,6 +316,14 @@ async def chat_completions(request: Request):
                 raw_user = " ".join(text_parts) if text_parts else str(content)
             else:
                 raw_user = str(content)
+
+            if not context:
+                context_match = re.search(
+                    r"<context>(.*?)</context>", raw_user, re.DOTALL
+                )
+                if context_match:
+                    context = context_match.group(0)
+
             attachments_match = re.search(
                 r"<attachments>(.*?)</attachments>", raw_user, re.DOTALL
             )
@@ -418,47 +463,23 @@ async def chat_completions(request: Request):
                     }
                     yield f"data: {json.dumps(tool_chunk)}\n\n"
             elif clean_text:
-                lines = clean_text.split("\n")
-                for line_idx, line in enumerate(lines):
-                    if line_idx > 0:
-                        newline_chunk = {
-                            "id": chunk_id,
-                            "object": "chat.completion.chunk",
-                            "created": created_time,
-                            "model": model,
-                            "system_fingerprint": None,
-                            "choices": [
-                                {
-                                    "index": 0,
-                                    "delta": {"content": "\n"},
-                                    "logprobs": None,
-                                    "finish_reason": None,
-                                }
-                            ],
-                        }
-                        yield f"data: {json.dumps(newline_chunk)}\n\n"
-                    if line.strip():
-                        words = line.split()
-                        for i, word in enumerate(words):
-                            word_with_space = (
-                                word if i == len(words) - 1 else word + " "
-                            )
-                            chunk = {
-                                "id": chunk_id,
-                                "object": "chat.completion.chunk",
-                                "created": created_time,
-                                "model": model,
-                                "system_fingerprint": None,
-                                "choices": [
-                                    {
-                                        "index": 0,
-                                        "delta": {"content": word_with_space},
-                                        "logprobs": None,
-                                        "finish_reason": None,
-                                    }
-                                ],
+                for char in clean_text:
+                    chunk = {
+                        "id": chunk_id,
+                        "object": "chat.completion.chunk",
+                        "created": created_time,
+                        "model": model,
+                        "system_fingerprint": None,
+                        "choices": [
+                            {
+                                "index": 0,
+                                "delta": {"content": char},
+                                "logprobs": None,
+                                "finish_reason": None,
                             }
-                            yield f"data: {json.dumps(chunk)}\n\n"
+                        ],
+                    }
+                    yield f"data: {json.dumps(chunk)}\n\n"
             final_chunk = {
                 "id": chunk_id,
                 "object": "chat.completion.chunk",

@@ -10,7 +10,6 @@ load_dotenv()
 async def inject_wormhole():
     proxy_port = os.getenv("proxy_port", "8766")
 
-    # Use standalone Chrome with pre-authenticated profile
     chrome_path = "/app/chrome_standalone/opt/google/chrome/chrome"
     user_data_dir = "/app/chrome_profile"
 
@@ -19,14 +18,12 @@ async def inject_wormhole():
     print(f"[Wormhole] User data directory: {user_data_dir}")
     print(f"[Wormhole] Proxy port: {proxy_port}")
 
-    # Verify profile exists
     if not os.path.exists(user_data_dir):
         print(f"[Wormhole] ERROR: Profile directory not found: {user_data_dir}")
         return
 
     print(f"[Wormhole] ✓ Profile directory exists")
 
-    # Check for important profile files
     profile_files = ["Default/Cookies", "Default/Preferences", "Local State"]
     for pfile in profile_files:
         full_path = os.path.join(user_data_dir, pfile)
@@ -39,7 +36,6 @@ async def inject_wormhole():
     print("[Wormhole] ===== Starting Chrome with Persistent Context =====")
 
     async with async_playwright() as p:
-        # Use launch_persistent_context to properly load the user profile
         context = await p.chromium.launch_persistent_context(
             user_data_dir,
             headless=True,
@@ -58,7 +54,6 @@ async def inject_wormhole():
 
         print("[Wormhole] ✓ Chrome launched with persistent context")
 
-        # Get the default page or create a new one
         if len(context.pages) > 0:
             page = context.pages[0]
         else:
@@ -70,7 +65,6 @@ async def inject_wormhole():
 
         page.on("console", handle_console)
 
-        # Log cookies to verify session
         cookies = await context.cookies()
         print(f"[Wormhole] Loaded {len(cookies)} cookies from profile")
         csrf_cookie = next((c for c in cookies if c["name"] == "_csrf"), None)
@@ -93,13 +87,11 @@ async def inject_wormhole():
         current_url = page.url
         print(f"[Wormhole] Current URL: {current_url}")
 
-        # Take screenshot to verify state
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         screenshot_path = f"/app/data/auth_check_{timestamp}.png"
         await page.screenshot(path=screenshot_path)
         print(f"[Wormhole] Screenshot saved: {screenshot_path}")
 
-        # Check authentication status
         if "/dashboard" in current_url:
             print(
                 "[Wormhole] ✓✓✓ SUCCESS: Redirected to /dashboard - USER IS LOGGED IN ✓✓✓"

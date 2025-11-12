@@ -31,10 +31,6 @@ async def send_command(command, params):
 
 
 async def send_script_async(script_file, input_data=None):
-    """
-    Legacy function that converts script files to command calls.
-    Maps old script-based calls to new command-based architecture.
-    """
     try:
         if "create_conversation" in script_file:
             command = "createConversation"

@@ -60,7 +60,6 @@ class TemplateComposer:
             "context": context or "",
             "user_request": user_request or "",
         }
-        # Use first_system_prompt for the first message, system_prompt otherwise
         template_key = "first_system_prompt" if is_first else "system_prompt"
         system_prompt_template = self.prompt_templates.get(template_key, "")
         return populate_template(system_prompt_template, variables)
@@ -84,7 +83,6 @@ class TemplateComposer:
         user_request=None,
         is_first=False,
     ):
-        # Use first_simple_user for the first message, simple_user otherwise
         template_key = "first_simple_user" if is_first else "simple_user"
         template = self.prompt_templates.get(template_key, "{{user_request}}")
         variables = {

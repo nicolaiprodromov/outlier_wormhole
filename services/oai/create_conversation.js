@@ -35,7 +35,6 @@
 
     const conversation = await createResponse.json();
 
-    const combinedPrompt = systemMessage + "\n\n" + promptText;
     const messageResponse = await fetch(
       baseUrl + "/conversations/" + conversation.id + "/turn-streaming",
       {
@@ -49,13 +48,13 @@
         body: JSON.stringify({
           prompt: {
             model: model,
-            text: combinedPrompt,
+            text: promptText,
             images: [],
-            systemMessage: "",
+            systemMessage: systemMessage,
             modelWasSwitched: false,
           },
           model: model,
-          systemMessage: "",
+          systemMessage: systemMessage,
           parentIdx: 0,
         }),
       },

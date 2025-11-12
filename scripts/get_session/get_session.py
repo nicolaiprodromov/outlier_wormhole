@@ -4,14 +4,12 @@ import sys
 from playwright.async_api import async_playwright
 from dotenv import load_dotenv
 
-# Load .env from workspace root
 workspace_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 env_path = os.path.join(workspace_root, ".env")
 load_dotenv(env_path)
 
 
 async def get_session(headless=False):
-    # Use isolated Chrome profile in get_session folder
     script_dir = os.path.dirname(os.path.abspath(__file__))
     user_data_dir = os.path.join(script_dir, "chrome_profile")
     chromium_path = os.path.join(
@@ -42,13 +40,11 @@ async def get_session(headless=False):
 
         print(f"[Get Session] ✓ Chrome launched in {mode} mode")
 
-        # Get or create a page
         if len(context.pages) > 0:
             page = context.pages[0]
         else:
             page = await context.new_page()
 
-        # Navigate to Outlier
         print("[Get Session] Navigating to https://app.outlier.ai")
         await page.goto(
             "https://app.outlier.ai", wait_until="domcontentloaded", timeout=15000
@@ -58,12 +54,10 @@ async def get_session(headless=False):
         current_url = page.url
         print(f"[Get Session] Current URL: {current_url}")
 
-        # Check cookies
         cookies = await context.cookies()
         print(f"[Get Session] Loaded {len(cookies)} cookies")
 
         if headless:
-            # In headless mode, just verify and exit
             if "/dashboard" in current_url:
                 print(
                     "[Get Session] ✓✓✓ SUCCESS: Profile converted! Headless mode can access dashboard ✓✓✓"
@@ -76,12 +70,10 @@ async def get_session(headless=False):
             await asyncio.sleep(3)
             await context.close()
         else:
-            # In headful mode, keep running for user interaction
             print("[Get Session] Session will be saved automatically")
             print("[Get Session] After logging in, press Ctrl+C to stop")
 
             try:
-                # Keep running until user stops
                 while True:
                     await asyncio.sleep(1)
             except KeyboardInterrupt:
@@ -90,7 +82,6 @@ async def get_session(headless=False):
 
 
 if __name__ == "__main__":
-    # Check if --headless flag is passed
     headless_mode = "--headless" in sys.argv
 
     try:

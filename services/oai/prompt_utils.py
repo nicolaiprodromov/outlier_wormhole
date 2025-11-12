@@ -3,40 +3,20 @@ from jinja2 import Template, StrictUndefined
 
 
 def extract_client_instructions(raw_system: str) -> str:
-    """
-    Extract the last <instructions> tag from the raw system prompt.
-    This contains client-specific instructions (like .github/instructions files)
-    that should be preserved and passed through to the agent.
-
-    The raw system prompt may contain multiple <instructions> tags:
-    1. General instructions about the agent behavior (we discard this)
-    2. Client-specific instructions at the end (we need to extract this)
-
-    Returns the content of the last <instructions> tag, or empty string if not found.
-    """
     if not raw_system:
         return ""
 
-    # Find all <instructions> tags
     pattern = r"<instructions>(.*?)</instructions>"
     matches = list(re.finditer(pattern, raw_system, re.DOTALL))
 
     if not matches:
         return ""
 
-    # Return the last <instructions> tag (the client-specific one)
     last_match = matches[-1]
     return last_match.group(0)
 
 
 def extract_context_tag(raw_system: str) -> str:
-    """
-    Extract the <context> tag from the raw system prompt.
-    This contains vital information like current date, OS, workspace structure, etc.
-    that should be preserved and passed through to the agent.
-
-    Returns the content of the <context> tag, or empty string if not found.
-    """
     if not raw_system:
         return ""
 

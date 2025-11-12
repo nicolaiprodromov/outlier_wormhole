@@ -35,7 +35,7 @@ class AgentWorkflow:
         input_data = {
             "prompt": first_prompt or "Hello",
             "model": model,
-            "systemMessage": "",
+            "systemMessage": first_system or "",
         }
 
         print(f"[Agent Workflow] Creating new conversation for model: {model}")
@@ -74,7 +74,7 @@ class AgentWorkflow:
             "conversationId": conversation_id,
             "prompt": prompt,
             "model": model,
-            "systemMessage": "",
+            "systemMessage": system_message,
         }
 
         print(f"[Agent] Sending prompt ({len(prompt)} chars) to Outlier")
@@ -92,7 +92,7 @@ class AgentWorkflow:
                 response = parsed_result.get("response", "")
                 print(f"[Agent] Got response ({len(response)} chars) from Outlier")
 
-                self.log_callback(conversation_id, prompt, "", response)
+                self.log_callback(conversation_id, prompt, system_message, response)
 
                 return response, parsed_result
 
@@ -121,27 +121,27 @@ class AgentWorkflow:
         print(f"[Agent] Parsed tool call: {tool_name}")
 
         remaining_text = response_text[: match.start()] + response_text[match.end() :]
-        return remaining_text.strip(), tool_call
+        return remaining_text, tool_call
 
     def extract_final_answer(self, response_text):
         invoke_final_pattern = r'<invoke name="final_answer">\s*<parameter name="answer">(.*?)</parameter>\s*</invoke>'
         match = re.search(invoke_final_pattern, response_text, re.DOTALL)
         if match:
-            return match.group(1).strip()
+            return match.group(1)
 
         final_answer_pattern = r"<final_answer>(.*?)</final_answer>"
         match = re.search(
             final_answer_pattern, response_text, re.DOTALL | re.IGNORECASE
         )
         if match:
-            return match.group(1).strip()
+            return match.group(1)
 
         cleaned = re.sub(
             r"<final_answer>|</final_answer>|\[FINAL ANSWER\]|FINAL:",
             "",
             response_text,
             flags=re.IGNORECASE,
-        ).strip()
+        )
         return cleaned
 
     def has_final_answer_marker(self, response_text):
@@ -200,8 +200,10 @@ class AgentWorkflow:
             tools, user_request, attachments, context, custom_instructions, is_first
         )
 
+        system_message = self.composer.get_system()
+
         response_text, _ = await self.send_to_outlier(
-            conversation_id, prompt, model, ""
+            conversation_id, prompt, model, system_message
         )
 
         if response_text is None:
@@ -237,7 +239,6 @@ class AgentWorkflow:
             f"[Agent] handle_initial_tool_request: model={model}, tools={len(tools)}, is_first={is_first}"
         )
 
-        # Extract client-specific instructions from raw_system
         custom_instructions = extract_client_instructions(raw_system)
         if custom_instructions:
             print(
@@ -247,7 +248,6 @@ class AgentWorkflow:
         if context:
             print(f"[Agent] Received context: {len(context)} chars")
 
-        # Use is_first to determine which template to use
         prompt = self.initialize_system_prompt(
             tools,
             user_request,
@@ -257,8 +257,10 @@ class AgentWorkflow:
             is_first=is_first,
         )
 
+        system_message = self.composer.get_system()
+
         conversation_id, first_response = await self.get_or_create_conversation(
-            model, prompt, ""
+            model, prompt, system_message
         )
 
         if not conversation_id:
@@ -269,7 +271,7 @@ class AgentWorkflow:
             self.log_callback(
                 conversation_id,
                 prompt,
-                "",
+                system_message,
                 first_response,
             )
             if self.has_final_answer_marker(first_response):
@@ -300,22 +302,18 @@ class AgentWorkflow:
     async def handle_tool_response(self, model, messages, raw_system):
         print(f"[Agent] handle_tool_response: model={model}, messages={len(messages)}")
 
-        # Extract context tag from raw_system
         context = extract_context_tag(raw_system)
         if context:
             print(f"[Agent] Extracted context for tool response: {len(context)} chars")
 
-        # Only process the MOST RECENT tool call and response to avoid exponential context growth
         tool_output_parts = []
         last_assistant_msg = None
 
-        # Find the last assistant message with tool calls
         for msg in reversed(messages):
             if msg.get("role") == "assistant" and msg.get("tool_calls"):
                 last_assistant_msg = msg
                 break
 
-        # Add the most recent tool call
         if last_assistant_msg:
             tool_calls_in_msg = last_assistant_msg.get("tool_calls", [])
             for tc in tool_calls_in_msg:
@@ -324,7 +322,6 @@ class AgentWorkflow:
                     f"You called: {func.get('name')}({func.get('arguments')})"
                 )
 
-        # Add only the most recent tool responses (since last assistant message)
         collecting_responses = False
         for msg in messages:
             if msg == last_assistant_msg:
@@ -338,13 +335,17 @@ class AgentWorkflow:
         tool_output = "\n\n".join(tool_output_parts)
         prompt = self.composer.compose_tool_response(tool_output, context)
 
-        conversation_id, _ = await self.get_or_create_conversation(model, prompt, "")
+        system_message = self.composer.get_system()
+
+        conversation_id, _ = await self.get_or_create_conversation(
+            model, prompt, system_message
+        )
         if not conversation_id:
             print("[Agent] Failed to get conversation for tool response")
             return None, None, None
 
         response_text, _ = await self.send_to_outlier(
-            conversation_id, prompt, model, ""
+            conversation_id, prompt, model, system_message
         )
 
         if response_text is None:
@@ -369,7 +370,6 @@ class AgentWorkflow:
 
         system_content = self.composer.get_system()
 
-        # Extract context tag from raw_system
         context = extract_context_tag(raw_system)
         if context:
             print(f"[Agent] Extracted context: {len(context)} chars")
@@ -382,20 +382,22 @@ class AgentWorkflow:
             is_first=is_first,
         )
 
+        system_message = self.composer.get_system()
+
         conversation_id, first_response = await self.get_or_create_conversation(
-            model, prompt, ""
+            model, prompt, system_message
         )
         if not conversation_id:
             print("[Agent Workflow] Failed to get or create conversation")
             return None, None, None
 
         if first_response:
-            self.log_callback(conversation_id, prompt, "", first_response)
+            self.log_callback(conversation_id, prompt, system_message, first_response)
             clean_text = first_response
             tool_calls = None
         else:
             response_text, _ = await self.send_to_outlier(
-                conversation_id, prompt, model
+                conversation_id, prompt, model, system_message
             )
             if response_text is None:
                 print("[Agent Workflow] Failed to get response from Outlier")

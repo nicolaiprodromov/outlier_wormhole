@@ -13,8 +13,6 @@ import traceback
 
 
 class SafeLogger:
-    """Thread-safe logger that writes to disk asynchronously."""
-
     def __init__(self, base_folder: str = "data"):
         self.base_folder = Path(base_folder)
         self.raw_dumps_folder = self.base_folder / "raw_dumps"
@@ -25,28 +23,24 @@ class SafeLogger:
         self._start_worker()
 
     def _ensure_folders(self):
-        """Ensure base folders exist, create if missing."""
         try:
             self.base_folder.mkdir(parents=True, exist_ok=True)
             self.raw_dumps_folder.mkdir(parents=True, exist_ok=True)
             print(f"[SafeLogger] Initialized folders: {self.base_folder}")
         except Exception as e:
             print(f"[SafeLogger] WARNING: Failed to create folders: {e}")
-            # Don't raise - we'll try to recreate on each write
 
     def _start_worker(self):
-        """Start the background worker thread."""
         self.running = True
         self.worker_thread = threading.Thread(target=self._worker, daemon=True)
         self.worker_thread.start()
         print(f"[SafeLogger] Worker thread started")
 
     def _worker(self):
-        """Background worker that processes the logging queue."""
         while self.running:
             try:
                 task = self.queue.get(timeout=1.0)
-                if task is None:  # Shutdown signal
+                if task is None:
                     break
 
                 task_type, args = task
@@ -64,7 +58,6 @@ class SafeLogger:
                     traceback.print_exc()
 
     def _write_raw_dump(self, system_message: str, user_prompt: str):
-        """Write raw prompt dumps to disk."""
         try:
             # Ensure folder exists
             self.raw_dumps_folder.mkdir(parents=True, exist_ok=True)
@@ -80,7 +73,6 @@ class SafeLogger:
 
         except Exception as e:
             print(f"[SafeLogger] ERROR writing raw dump: {e}")
-            # Don't raise - just log the error
 
     def _write_conversation_log(
         self,
@@ -90,13 +82,10 @@ class SafeLogger:
         prompt: str,
         response: str,
     ):
-        """Write conversation log to disk."""
         try:
-            # Ensure conversation folder exists
             conv_folder = self.base_folder / conversation_id
             conv_folder.mkdir(parents=True, exist_ok=True)
 
-            # Write all three files
             (conv_folder / f"{index}_system.md").write_text(
                 system_message, encoding="utf-8"
             )
@@ -109,18 +98,12 @@ class SafeLogger:
 
         except Exception as e:
             print(f"[SafeLogger] ERROR writing conversation log: {e}")
-            # Don't raise - just log the error
 
     def dump_raw_prompts(self, system_message: str, user_prompt: str):
-        """
-        Queue a raw prompt dump (non-blocking).
-        Returns immediately without waiting for write to complete.
-        """
         try:
             self.queue.put(("raw_dump", (system_message, user_prompt)))
         except Exception as e:
             print(f"[SafeLogger] ERROR queuing raw dump: {e}")
-            # Don't raise - logging failure should not break the server
 
     def log_conversation(
         self,
@@ -130,10 +113,6 @@ class SafeLogger:
         prompt: str,
         response: str,
     ):
-        """
-        Queue a conversation log (non-blocking).
-        Returns immediately without waiting for write to complete.
-        """
         try:
             self.queue.put(
                 (
@@ -143,24 +122,20 @@ class SafeLogger:
             )
         except Exception as e:
             print(f"[SafeLogger] ERROR queuing conversation log: {e}")
-            # Don't raise - logging failure should not break the server
 
     def shutdown(self):
-        """Gracefully shutdown the worker thread."""
         print(f"[SafeLogger] Shutting down...")
         self.running = False
-        self.queue.put(None)  # Shutdown signal
+        self.queue.put(None)
         if self.worker_thread:
             self.worker_thread.join(timeout=5.0)
         print(f"[SafeLogger] Shutdown complete")
 
 
-# Global instance
 _logger_instance: Optional[SafeLogger] = None
 
 
 def get_logger() -> SafeLogger:
-    """Get or create the global logger instance."""
     global _logger_instance
     if _logger_instance is None:
         _logger_instance = SafeLogger()
@@ -168,13 +143,8 @@ def get_logger() -> SafeLogger:
 
 
 def dump_raw_prompts(system_message: str, user_prompt: str):
-    """
-    Legacy function for compatibility.
-    Logs raw prompts asynchronously without blocking.
-    """
     try:
         logger = get_logger()
         logger.dump_raw_prompts(system_message, user_prompt)
     except Exception as e:
         print(f"[SafeLogger] CRITICAL: Failed to log raw prompts: {e}")
-        # Never raise - logging should not break the server

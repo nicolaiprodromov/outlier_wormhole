@@ -9,19 +9,12 @@ WORKDIR /app
 COPY services/bridge/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy standalone Chrome and pre-authenticated profile from get_session
-COPY scripts/get_session/chrome_standalone /app/chrome_standalone
-COPY scripts/get_session/chrome_profile /app/chrome_profile
-
 COPY services/bridge/wormhole.py .
 COPY services/bridge/inject_wormhole.js .
 COPY services/bridge/ws_proxy.py .
 COPY services/bridge/entrypoint.sh .
 
 RUN chmod +x entrypoint.sh
-
-# Make Chrome executable
-RUN chmod +x /app/chrome_standalone/opt/google/chrome/chrome
 
 RUN mkdir -p /tmp/chrome-debug && chmod 777 /tmp/chrome-debug
 

@@ -1,19 +1,30 @@
-.git
-.gitignore
-.gitattributes
+# VERY IMPORTANT
 .env
 .env.*
 !.env.example
-__pycache__/
-data/
-*.log
-logs/
+scripts/
+
+# DOCKER STUFF
 docker-compose.yml
 Dockerfile
 services/*/Dockerfile
+
+# DEV STUFF
+.git
+.gitignore
+.gitattributes
+__pycache__/
 .vscode/
+.github/
+.devcontainer/
+.pre-commit-config.yaml
+.prettierignore
+justfile
 README.md
 docs/
-scripts/
-!scripts/get_session/chrome_standalone/
-!scripts/get_session/chrome_profile/
+node_modules/
+
+# LOGS
+data/
+*.log
+logs/

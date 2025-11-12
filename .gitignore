@@ -1,8 +1,15 @@
+# VERY IMPORTANT
 .env
-data/
-__pycache__/
-node_modules/
 scripts/get_session/chrome_profile/
 scripts/get_session/chrome_standalone/
+
+# DEV STUFF
+__pycache__/
+node_modules/
 scripts/get_session/venv/
 .github/instructions/
+
+# LOGS
+data/
+*.log
+logs/
