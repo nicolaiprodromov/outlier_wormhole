@@ -61,17 +61,7 @@ you have two options to get started:
 
 1. make a `docker-compose.yml` file (copy [docker-compose.public.yml](./docker-compose.public.yml) content) and modify the volume paths to point to your local chrome executable, chrome profile and data directories:
 
-2. run your local chrome, login to outlier and copy (recommended) the profile to the location you specified in the `docker-compose.yml`.
-
-3. start the services:
-
-   ```bash
-   docker compose up --build -d
-   ```
-
-### a bit more involved (for development):
-
-1. **clone this repository & rename `.env.example` to `.env` & replace the content of `.env` with:**
+2. make a `.env` file:
 
    ```env
    # security
@@ -84,11 +74,25 @@ you have two options to get started:
    oai_port=11434
    ```
 
+3. run your local chrome, login to outlier and exit.
+
+4. point the docker-compose file to the chrome executable and copy (recommended) the profile folder to the location you specified in the `docker-compose.yml`.
+
+5. start the services:
+
+   ```bash
+   docker compose up --build -d
+   ```
+
+### a bit more involved (for development):
+
+1. **clone this repository & rename `.env.example` to `.env` & replace the content of `.env` with your data**
+
 2. **run `get_session` to log into Outlier and store your session:**
 
-- with `python` (you can use venv or any environment you like):
-  1. run `python scripts/get_session.py --headful` and login to Outlier.ai when the browser opens than close it.
-  2. run `python scripts/get_session.py --headless` to convert your session
+- with `python` (activate the venv before or install dependencies):
+  1. run `python3 scripts/get_session.py --headful` and login to Outlier.ai when the browser opens than close it.
+  2. run `python3 scripts/get_session.py --headless` to convert your session
 - with `just`:
   1. run `just get_session --headful` and login to Outlier.ai when the browser opens than close it.
   2. run `just get_session --headless` to convert your session data to headless mode.
@@ -98,12 +102,6 @@ you have two options to get started:
    ```just
    just build
    just start
-   ```
-
-   or
-
-   ```bash
-   docker compose up --build -d
    ```
 
 3. **point any OpenAI-compatible client to `http://localhost:11434`**
