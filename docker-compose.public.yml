@@ -1,11 +1,6 @@
 name: ow
 services:
   server:
-    build:
-      context: .
-      dockerfile: services/server/Dockerfile
-      args:
-        - wormhole_port=${WORMHOLE_PORT:-8765}
     image: nicolaiprodromov/ow-server:latest
     container_name: server
     ports:
@@ -34,12 +29,6 @@ services:
         max-file: "3"
 
   bridge:
-    build:
-      context: .
-      dockerfile: services/bridge/Dockerfile
-      args:
-        - chrome_debug_port=${CHROME_DEBUG_PORT:-9222}
-        - proxy_port=${PROXY_PORT:-8766}
     image: nicolaiprodromov/ow-bridge:latest
     container_name: bridge
     ports:
@@ -54,7 +43,6 @@ services:
       server:
         condition: service_healthy
     volumes:
-      - ./services/bridge/inject_wormhole.js:/app/inject_wormhole.js:ro
       - ./data:/app/data
       - ./scripts/get_session/chrome_standalone:/app/chrome_standalone:ro
       - ./scripts/get_session/chrome_profile:/app/chrome_profile
@@ -69,11 +57,6 @@ services:
         max-file: "3"
 
   oai:
-    build:
-      context: .
-      dockerfile: services/oai/Dockerfile
-      args:
-        - oai_port=${OAI_PORT:-11434}
     image: nicolaiprodromov/ow-oai:latest
     container_name: oai
     ports:
@@ -111,48 +94,6 @@ services:
         max-size: "10m"
         max-file: "3"
 
-  janitor:
-    profiles:
-      - janitor
-    build:
-      context: services/janitor
-      dockerfile: Dockerfile
-    image: nicolaiprodromov/ow-janitor:latest
-    container_name: janitor
-    environment:
-      - DATA_DIR=/app/data
-      - ARCHIVE_DIR=/app/archives
-      - CLEANUP_INTERVAL_HOURS=${CLEANUP_INTERVAL_HOURS:-24}
-      - MAX_DATA_SIZE_MB=${MAX_DATA_SIZE_MB:-1024}
-      - MAX_FILE_AGE_DAYS=${MAX_FILE_AGE_DAYS:-30}
-      - ARCHIVE_RETENTION_DAYS=${ARCHIVE_RETENTION_DAYS:-90}
-      - RUN_ON_STARTUP=${JANITOR_RUN_ON_STARTUP:-true}
-      - TZ=${TZ:-UTC}
-    volumes:
-      - ./data:/app/data
-      - janitor-archives:/app/archives
-      - janitor-logs:/var/log/janitor
-    networks:
-      - ow-net
-    healthcheck:
-      test: ["CMD", "test", "-f", "/var/log/janitor/heartbeat"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
-      start_period: 10s
-    restart: unless-stopped
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
-
 networks:
   ow-net:
     driver: bridge
-
-volumes:
-  janitor-archives:
-    driver: local
-  janitor-logs:
-    driver: local

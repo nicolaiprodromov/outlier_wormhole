@@ -14,8 +14,9 @@ COPY services/oai/logger.py .
 COPY services/oai/create_conversation.js .
 COPY services/oai/send_message.js .
 COPY services/oai/agent_prompts.yaml .
+COPY services/oai/templates /app/templates
 
-RUN mkdir -p /app/data /app/templates
+RUN mkdir -p /app/data
 
 RUN useradd -m -u 1000 wormhole && chown -R wormhole:wormhole /app
 

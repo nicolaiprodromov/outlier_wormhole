@@ -11,7 +11,7 @@ get 0$ sota llm models API via an **OpenAI/Ollama-compatible server**.
 ![Outlier Logo](https://app.outlier.ai/assets/llm-icons/Llama%204%20Maverick.svg)
 ![Outlier Logo](https://app.outlier.ai/assets/llm-icons/qwen3-235b-a22b-2507-v1.svg)
 
-```bash
+```
 ┌─────────────────────────────────────────────────────────────┐
 ├──────────────────────────── Client ─────────────────────────┤
 └────────────────────────────── ▲ ────────────────────────────┘
@@ -54,6 +54,22 @@ get 0$ sota llm models API via an **OpenAI/Ollama-compatible server**.
 - [just](https://github.com/casey/just) (optional)
 
 ---
+
+you have two options to get started:
+
+### easy:
+
+1. make a `docker-compose.yml` file (copy [docker-compose.public.yml](./docker-compose.public.yml) content) and modify the volume paths to point to your local chrome executable, chrome profile and data directories:
+
+2. run your local chrome, login to outlier and copy (recommended) the profile to the location you specified in the `docker-compose.yml`.
+
+3. start the services:
+
+   ```bash
+   docker compose up --build -d
+   ```
+
+### a bit more involved (for development):
 
 1. **clone this repository & rename `.env.example` to `.env` & replace the content of `.env` with:**
 
