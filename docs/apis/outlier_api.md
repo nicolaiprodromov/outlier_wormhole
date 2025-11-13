@@ -3,6 +3,7 @@
 `chrome --remote-debugging-port=9222 --user-data-dir="C:\temp\chrome-debug"`
 
 ## Overview
+
 Core API endpoints for conversations, models, and message sending in the Outlier AI playground.
 
 **Verified by**: Sending test messages and capturing network traffic
@@ -10,6 +11,7 @@ Core API endpoints for conversations, models, and message sending in the Outlier
 ---
 
 ## Base URL
+
 ```
 https://app.outlier.ai/internal/experts/assistant/
 ```
@@ -17,6 +19,7 @@ https://app.outlier.ai/internal/experts/assistant/
 ---
 
 ## Authentication
+
 - **Method**: Session-based cookies
 - **Failure**: Returns 401 Unauthorized when not authenticated
 
@@ -25,11 +28,13 @@ https://app.outlier.ai/internal/experts/assistant/
 ## 1. Models
 
 ### List Available AI Models
+
 ```http
 GET /models
 ```
 
 **Response**: 200 OK
+
 ```json
 [
   {
@@ -54,11 +59,13 @@ GET /models
 ## 2. Conversations
 
 ### Create New Conversation
+
 ```http
 POST /conversations
 ```
 
 **Response**: 201 Created
+
 ```json
 {
   "id": "690e2e0a51475b6e6569d7ab",
@@ -68,6 +75,7 @@ POST /conversations
 ```
 
 **Notes**:
+
 - Conversation ID: 24-character hexadecimal string
 - Model can be specified in request body
 - Called when sending first message
@@ -75,16 +83,19 @@ POST /conversations
 ---
 
 ### Get Conversation Details
+
 ```http
 GET /conversations/{conversationId}
 ```
 
 **Example**:
+
 ```
 GET /conversations/690e2e0a51475b6e6569d7ab
 ```
 
 **Response**: 200 OK
+
 ```json
 {
   "id": "690e2e0a51475b6e6569d7ab",
@@ -105,21 +116,25 @@ GET /conversations/690e2e0a51475b6e6569d7ab
 ---
 
 ### List All Conversations
+
 ```http
 GET /conversations/
 ```
 
 **Response**: 200 OK
+
 - Returns array of all conversations
 
 ---
 
 ### List Conversations (Paginated)
+
 ```http
 GET /conversations/paginated?page=1&pageSize=20
 ```
 
 **Parameters**:
+
 - `page`: Page number (1-based)
 - `pageSize`: Results per page
 
@@ -130,12 +145,14 @@ GET /conversations/paginated?page=1&pageSize=20
 ## 3. Sending Messages
 
 ### **PRIMARY ENDPOINT: Send Message with Streaming Response**
+
 ```http
 POST /conversations/{conversationId}/turn-streaming
 Content-Type: application/json
 ```
 
 **Request Body**:
+
 ```json
 {
   "content": "Your message text here",
@@ -143,12 +160,14 @@ Content-Type: application/json
 }
 ```
 
-**Response**: 200 OK  
+**Response**: 200 OK
+
 - **Type**: Server-Sent Events (SSE) stream
 - **Content-Type**: `text/event-stream`
 - AI response streams in real-time as it's generated
 
 **Example**:
+
 ```http
 POST /conversations/690e2e0a51475b6e6569d7ab/turn-streaming
 
@@ -159,6 +178,7 @@ POST /conversations/690e2e0a51475b6e6569d7ab/turn-streaming
 ```
 
 **Notes**:
+
 - This is the main endpoint used for all message sending
 - Response arrives incrementally via SSE
 - Model must be specified in each request
@@ -196,11 +216,11 @@ data: {"type": "done"}
 
 ## Key Technical Details
 
-| Aspect | Details |
-|--------|---------|
-| **Base URL** | `https://app.outlier.ai/internal/experts/assistant/` |
-| **Authentication** | Session cookies |
-| **Conversation ID Format** | 24-character hex (e.g., `690e2e0a51475b6e6569d7ab`) |
-| **Message Endpoint** | `POST /conversations/{id}/turn-streaming` |
-| **Response Type** | Server-Sent Events (SSE) stream |
-| **Required Fields** | `content` (string), `model` (string) |
+| Aspect                     | Details                                              |
+| -------------------------- | ---------------------------------------------------- |
+| **Base URL**               | `https://app.outlier.ai/internal/experts/assistant/` |
+| **Authentication**         | Session cookies                                      |
+| **Conversation ID Format** | 24-character hex (e.g., `690e2e0a51475b6e6569d7ab`)  |
+| **Message Endpoint**       | `POST /conversations/{id}/turn-streaming`            |
+| **Response Type**          | Server-Sent Events (SSE) stream                      |
+| **Required Fields**        | `content` (string), `model` (string)                 |

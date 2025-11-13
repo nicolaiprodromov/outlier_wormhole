@@ -7,9 +7,12 @@ scripts/get_session/chrome_standalone/
 __pycache__/
 node_modules/
 scripts/get_session/venv/
-.github/instructions/
+.github/agents
+.github/instructions
 
 # LOGS
 data/
 *.log
 logs/
+
+docs/cr
