@@ -177,7 +177,7 @@ main() {
 
     if command -v logrotate >/dev/null 2>&1; then
         log "Running logrotate..."
-        logrotate -f /etc/logrotate.d/outlier-data 2>&1 | tee -a "$LOG_FILE" || log "Logrotate completed with warnings"
+        logrotate -s /var/lib/logrotate/status -f /etc/logrotate.d/outlier-data 2>&1 | tee -a "$LOG_FILE" || log "Logrotate completed with warnings"
     fi
 
     archive_old_conversations

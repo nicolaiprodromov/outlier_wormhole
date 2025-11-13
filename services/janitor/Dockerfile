@@ -18,8 +18,9 @@ COPY cleanup.sh /app/cleanup.sh
 COPY logrotate.conf /etc/logrotate.d/outlier-data
 COPY entrypoint.sh /app/entrypoint.sh
 
-RUN mkdir -p /app/data /app/archives /var/log/janitor \
-    && chown -R janitor:janitor /app /var/log/janitor \
+RUN mkdir -p /app/data /app/archives /var/log/janitor /var/lib/logrotate \
+    && touch /var/lib/logrotate/status \
+    && chown -R janitor:janitor /app /var/log/janitor /var/lib/logrotate \
     && chmod +x /app/cleanup.sh /app/entrypoint.sh \
     && chmod 644 /etc/logrotate.d/outlier-data \
     && sed -i 's/\r$//' /app/cleanup.sh \
